@@ -8,7 +8,7 @@ if pgrep -x "$SERVICE" >/dev/null; then
 else
 	echo "Starting LT..."
 	. /LanguageTool-6.3/start.sh >/dev/null 2>&1 &
-	sleep 1
+	sleep 2
 fi
 
 # https://jqlang.github.io/jq/manual/
@@ -19,13 +19,21 @@ fi
 # curl --data "language=ru-RU&text=кто мы? за , чток" "http://localhost:8010/v2/check" |
 # 	jq '.matches[] | "\(.message) -> \(.sentence) -> \(.replacements[].value)"'
 
+echo_green() {
+    echo -e "\e[32m$1\e[0m"
+}
+
 check() {
 	local text=$1
 
 	result=$(curl -s --data "language=ru-RU&text=$text" "http://localhost:8010/v2/check" |
 		jq '.matches[] | "\(.message) => \(.sentence)"')
 
-	echo "$result"
+  if [ -n "$result" ]; then
+    echo "$result"
+  else
+    echo_green "No mistakes!"
+  fi
 }
 
 echo "Start checking =>"
