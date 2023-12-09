@@ -3,12 +3,12 @@
 set -e
 
 SERVICE="java"
-echo "Checking LT Server"
 if pgrep -x "$SERVICE" >/dev/null; then
 	echo "LT has been started. Skipping"
 else
 	echo "Starting LT..."
-	. /LanguageTool-6.3/start.sh > /dev/null 2>&1 &
+	. /LanguageTool-6.3/start.sh >/dev/null 2>&1 &
+	sleep 1
 fi
 
 # https://jqlang.github.io/jq/manual/

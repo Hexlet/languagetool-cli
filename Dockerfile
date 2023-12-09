@@ -6,3 +6,7 @@ FROM silviof/docker-languagetool
 USER root
 
 RUN apt-get update && apt-get install -y jq
+
+COPY bin/ltcheck.sh /usr/local/bin/ltcheck.sh
+
+CMD [ "ltcheck.sh" ]
