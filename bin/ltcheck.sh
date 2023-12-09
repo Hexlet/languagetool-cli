@@ -26,8 +26,8 @@ echo_green() {
 check() {
 	local text=$1
 
-	result=$(curl -s --data "language=ru-RU&text=$text" "http://localhost:8010/v2/check" |
-		jq '.matches[] | "\(.message) => \(.sentence)"')
+  body=$(curl -s -G --data-urlencode "language=ru-RU" --data-urlencode "text=$text" "http://localhost:8010/v2/check")
+	result=$(echo "$body" | jq '.matches[] | "\(.message) => \(.sentence)"')
 
   if [ -n "$result" ]; then
     echo "$result"
