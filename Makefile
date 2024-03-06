@@ -11,8 +11,7 @@ run:
 	docker run --rm \
 		-v ./fixtures:/content \
 		-v ./bin:/usr/local/bin \
-		hexlet/languagetool-cli \
-		ltcheck.sh check
+		hexlet/languagetool-cli
 
 run-fix:
 	docker run --rm \
@@ -24,5 +23,4 @@ run-fix:
 test:
 	docker run --rm \
 		-v ./fixtures:/content \
-		hexlet/languagetool-cli \
-		ltcheck.sh check
+		hexlet/languagetool-cli
