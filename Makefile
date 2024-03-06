@@ -13,6 +13,13 @@ run:
 		-v ./bin:/usr/local/bin \
 		hexlet/languagetool-cli
 
+run-fix:
+	docker run --rm \
+		-v ./fixtures:/content \
+		-v ./bin:/usr/local/bin \
+		hexlet/languagetool-cli \
+		ltcheck.sh fix
+
 test:
 	docker run --rm \
 		-v ./fixtures:/content \
