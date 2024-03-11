@@ -1,0 +1,317 @@
+
+Cover image for Pushing container images to GitHub Container Registry with GitHub Actions
+Will Velida
+Will Velida
+
+Posted on Dec 2, 2022
+18
+Pushing container images to GitHub Container Registry with GitHub Actions
+#github
+#docker
+#tutorial
+#devops
+
+In my job, I build a lot of samples that I share with customers to show them how things work. A lot of my customers are interested in Azure Container Apps, so I want to be able to provide them with samples with pre-built container images, without having to share the entire application source code as well (especially if I've got a bunch of basic microservices, that don't really need to be included in the sample).
+
+Enter GitHub Container Registry! (GHCR) I've seen a couple of sample repos where container images were being referenced from GHCR, but I didn't know it worked or how to push images to it. Turns out, it was fairly straightforward.
+
+In this post, I'll talk about what GHCR is, and how we can push container images to it using GitHub Actions!
+What is GitHub Container Registry?
+
+GitHub Container Registry stores container images within your organization or personal account, and allows you to associate an image with a repository. It currently supports both the Docker Image Manifest V2, Schema 2 and Open Container Initiative (OCI) specifications.
+
+In GitHub, we can build and push our docker images to GHCR within a GitHub Actions workflow file and make those images available either privately or publicly (I'm making my images public for my samples).
+
+Let's say I have the following Dockerfile:
+
+FROM mcr.microsoft.com/dotnet/aspnet:6.0 AS base
+LABEL org.opencontainers.image.source="https://github.com/willvelida/dapr-store-app"
+WORKDIR /app
+EXPOSE 80
+
+FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
+WORKDIR /src
+COPY ["Store/Store.csproj", "Store/"]
+RUN dotnet restore "Store/Store.csproj"
+COPY . .
+WORKDIR "/src/Store"
+RUN dotnet build "Store.csproj" -c Release -o /app/build
+
+FROM build AS publish
+RUN dotnet publish "Store.csproj" -c Release -o /app/publish /p:UseAppHost=false
+
+FROM base AS final
+WORKDIR /app
+COPY --from=publish /app/publish .
+ENTRYPOINT ["dotnet", "Store.dll"]
+
+This Dockerfile is just building a simple Blazor Server application (It's a pretty generic Dockerfile for all ASP.NET Core applications).
+
+Instead of pushing this to Docker Hub or Azure Container Registry, we're going to set up a GitHub Actions workflow file to push this container image into GHCR.
+
+Let's take a look at how we can authenticate to GHCR.
+Using the GITHUB_TOKEN to authenticate to GHCR
+
+The recommended method for authenticating to GHCR is to use the GITHUB_TOKEN. GitHub provides you with a token that you can use to authenticate on behalf of GitHub Actions. At the start of each workflow run, GitHub will automatically create a unique GITHUB_TOKEN secret to use in the workflow, which you can use to authenticate.
+
+When GHCR was in Beta, you could use a Personal Access Token (PAT) to authenticate. You'd need to be careful about the permissions that you gave the PAT token. With GITHUB_TOKEN, this comes with sufficient permissions needed to push container images to GHCR
+Using a Personal Access Token to authenticate to GHCR
+
+I did have some trouble using the GITHUB_TOKEN initially, so to get started, I used a PAT token. to create one, go to Settings/Developer settings, click on Personal access tokens/Tokens (classic) and then click on Generate new token. To push images to GHCR, you only need the following permissions:
+
+    read:packages
+    write:packages
+    delete:packages
+
+Once you've created the PAT, you can store it as a repository secret inside your GitHub repository that contains your Dockerfile.
+
+Within your GitHub Actions workflow file, you can then authenticate to GHCR using the following:
+
+- name: 'Login to GitHub Container Registry'
+        run: |
+          echo $CR_PAT | docker login ghcr.io -u <Your-GitHub-username> --password-stdin
+
+Since it's recommended to use GITHUB_TOKEN instead of PAT tokens, we'll use that moving forward.
+Creating a GitHub Actions workflow
+
+Now that we've got a way to authenticate to GHCR, we can create a GitHub Actions workflow file to push our container image. Let's take a look at the following:
+
+name: Deploy Images to GHCR
+
+env:
+  DOTNET_VERSION: '6.0.x'
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+      push-store-image:
+        runs-on: ubuntu-latest
+        defaults:
+          run:
+            working-directory: './Store'
+        steps:
+          - name: 'Checkout GitHub Action'
+            uses: actions/checkout@main
+
+          - name: 'Login to GitHub Container Registry'
+            uses: docker/login-action@v1
+            with:
+              registry: ghcr.io
+              username: ${{github.actor}}
+              password: ${{secrets.GITHUB_TOKEN}}
+
+          - name: 'Build Inventory Image'
+            run: |
+              docker build . --tag ghcr.io/<your-GitHub-username>/store:latest
+              docker push ghcr.io/<your-GitHub-username>/store:latest
+
+The most important steps to highlight are authenticating to GHCR, and then pushing the container image.
+
+To authenticate, we can use the docker/login-action, target ghrc.io as the registry, and use our username (passed in as ${{ github.actor }}) and our GITHUB_TOKEN as the password.
+
+Once we've been authenticated, we can tag our image, using the format ghcr.io/<your-github-username>/<image-name>:<image-version>.
+Making our image publicly accessible
+
+Now by default, when we publish a package the visibility will be private. You can keep your images private if you want, but for my samples I want them to be publicly available.
+
+To make them available to our repository, we need to add a LABEL command to our Dockerfile. You should do this underneath the first FROM command like so:
+
+FROM mcr.microsoft.com/dotnet/aspnet:6.0 AS base
+LABEL org.opencontainers.image.source="https://github.com/<your-github-username>/<your-repo-name>"
+
+This will make our images visible on our repository's main page, like so:
+
+GitHub repository with the packages section highlighted with a red rectangle
+
+Click on the package that you want to make public, then go to Package Settings. In the Danger Zone (cue Kenny Loggins), click on change visibility and choose Public like so:
+
+GitHub Package settings for changing package visibility
+
+Now that our package is public, we can pull it using docker pull like so:
+
+docker pull ghcr.io/willvelida/store:latest
+
+Conclusion
+
+In this post, we talked about what GHCR is, how we can authenticate and push images to it using to it using GitHub Actions and then those images public.
+
+Hopefully this has helped you with publishing container images to GitHub Container Registry. For private container images, I'll still use Azure Container Registry, but authenticating and pushing images to GHCR for the purposes of samples looks like the way to go.
+
+If you have any questions, feel free to reach out to me on twitter @willvelida
+
+Until next time, Happy coding! 🤓🖥️
+Top comments (5)
+pic
+ 
+webjose profile image
+•
+Dec 2 '22
+
+Could you explain why or how the build-store-project job integrates/contributes to the push-store-image job? All the steps I see in the former seem irrelevant since, in the end, the Docker file will do all this, or am I mistaken? As far as I can tell, the Docker file instructs Docker to download the SDK image, compile the source code and publish to a folder, and finally create the application image.
+
+Other than the section reading needs: [build-store-project], there seems to be no relation between the two jobs.
+
+Apologies for my lack of knowledge in GitHub Actions. I'm working on it.
+
+Thanks!
+Reply
+ 
+willvelida profile image
+•
+Dec 2 '22 • Edited on Dec 2
+
+In this case the Docker file does the work. I've excluded the tests stage, but you can just have a Dockerfile do the work.
+
+It's not a good idea to run tests in the Dockerfile. I'm expanding this sample in the future to include tests, so I kept them separate.
+
+I'll clean up the action for clarity in the article.
+Reply
+ 
+webjose profile image
+•
+Dec 2 '22
+
+Thank you for the explanation. If I understood correctly, the build-store-project job is a job that is missing a step: Unit Testing. Got it. 👍
+Reply
+ 
+webjose profile image
+•
+Dec 2 '22
+
+Hello Will, thank you very much for this article.
+
+If you don't mind, I have a couple of questions, and since you work closely to the source, I figured this could be my opportunity.
+
+In the Docker file you show, which is pretty much what I have seen in the past, a build and publish sources are defined. However, I see only the publish one being used at all.
+
+# The build source.
+FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
+
+# The publish source.
+FROM build AS publish
+
+FROM base AS final
+WORKDIR /app
+# Only publish is really needed.
+COPY --from=publish /app/publish .
+ENTRYPOINT ["dotnet", "Store.dll"]
+
+Not pasted above, but the code inside the publish source doesn't reference the build source's build result. So as far as I can tell, the code is being compiled twice for no good reason: The first time under build using dotnet build, and the second time under publish with dotnet publish.
+
+It is because of this that I use a simplified Dockerfile:
+
+FROM mcr.microsoft.com/dotnet/sdk:6.0 AS publish
+WORKDIR /src
+COPY ["Store/Store.csproj", "Store/"]
+RUN dotnet restore "Store/Store.csproj"
+COPY . .
+WORKDIR "/src/Store"
+# --NOT NEEDED-- RUN dotnet build "Store.csproj" -c Release -o /app/build
+RUN dotnet publish "Store.csproj" -c Release -o /app/publish /p:UseAppHost=false
+
+FROM base AS final
+# --NOT NEEDED SINCE base HAS ALREADY SET THIS: WORKDIR /app
+COPY --from=publish /app/publish .
+ENTRYPOINT ["dotnet", "Store.dll"]
+
+So, my question is: Why is there a build step that is never used? Am I missing something here?
+Reply
+ 
+willvelida profile image
+•
+Dec 2 '22
+
+They're using different base images because the mcr.microsoft.com/dotnet/aspnet:6.0 base has ASP.NET core installed, and has a few extra dependencies then the SDK base image has
+Reply
+Code of Conduct • Report abuse
+profile
+Stellar Development Foundation
+Promoted
+
+Create a Rust Smart Contract
+A brief tutorial on creating on setting up your local environment for Rust development
+
+Follow our step-by-step guide to develop smart contracts on Soroban.
+
+Start Building
+Read next
+shuttle_dev profile image
+Make a RAG-Powered Web Service with Qdrant and Rust
+
+Shuttle - Feb 28
+erikch profile image
+Five Tutorials To Create Your Fullstack Apps Using AWS Amplify Gen 2
+
+Erik Hanchett - Mar 1
+egeaytin profile image
+Microservices Authentication and Authorization Using API Gateway
+
+Ege Aytin - Feb 27
+esproc_spl profile image
+Is SQL a declarative language
+
+Judy - Feb 27
+Will Velida
+Lead Software Engineer at Azenix
+
+    Location
+    Australia
+    Education
+    University of Auckland
+    Work
+    Lead Software Engineer at Azenix
+    Joined
+    Sep 30, 2017
+
+More from Will Velida
+Giving our AI Agents skills using native functions in the Semantic Kernel SDK
+#ai #dotnet #tutorial #csharp
+Building your first Radius application on Azure Kubernetes Service
+#azure #kubernetes #cloud #tutorial
+Managing Distributed Transactions with the Saga Pattern
+#azure #architecture #tutorial #beginners
+profile
+Platform.sh
+Promoted
+
+Billboard image
+Experience a significant leap in debugging speed ⚡
+
+Debug and deploy your applications at the speed of light:
+
+🚀 Flexible, automated infrastructure provisioning
+🎯 Multicloud, multistack
+👾 Safe, secure, reliable
+
+More dev. Less ops.
+Learn how
+
+name: Deploy Images to GitHub Container Registry
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  push-store-image:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Checkout GitHub Action'
+        uses: actions/checkout@main
+
+      - name: 'Login to GitHub Container Registry'
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{github.actor}}
+          password: ${{secrets.GITHUB_TOKEN}}
+
+      - name: 'Build Inventory Image'
+        run: |
+          docker build . --tag ghcr.io/hexlet/languagetool-cli:latest
+          docker push ghcr.io/hexlet/languagetool-cli:latest
