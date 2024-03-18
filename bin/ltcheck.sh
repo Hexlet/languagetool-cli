@@ -65,14 +65,14 @@ fix() {
   echo -e "Было:\n${text}\n"
 
   echo -e "Стало:\n${result}\n"
-  
+
   cat <<< "$result" > "$filepath"
 }
 
 if [[ "$@" == "fix" ]]; then
   echo "Start fixing =>"
 
-  find /content -type f -name "*.md" | while read -r filepath; do
+  find /content -type f \( -iname \*.md -o -iname \*.adoc \) | while read -r filepath; do
     echo -e "\n$filepath"
     file_content=$(cat "$filepath")
     fix "$file_content" "$filepath"
@@ -83,7 +83,7 @@ else
 
   echo "Start checking =>"
 
-  find /content -type f -name "*.md" | while read -r filepath; do
+  find /content -type f \( -iname \*.md -o -iname \*.adoc \) | while read -r filepath; do
     echo -e "\n$filepath"
     file_content=$(cat "$filepath")
 	  check "$file_content"
