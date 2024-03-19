@@ -7,8 +7,25 @@ const baseUrl = 'http://localhost:8010';
 const extensions = ['.md', '.adoc'];
 const ignoreRules = ['STYLE'];
 
+const addWords = () => {
+  const content = fs.readFileSync('ignore_dictionary.txt', 'utf-8');
+  const words = content.split(/\s/);
+
+  const url = new URL('/v2/add', baseUrl);
+
+  const promises = words.map((word) => {
+    const data = new URLSearchParams({
+      word,
+    });
+    return axios.post(url, data);
+  });
+
+  return Promise.all(promises).then(() => console.log('Dictionary added'));
+};
+
 const check = () => {
   const dirpath = '/content';
+
   fs.readdir(dirpath, { recursive: true }, (_err, fileNames) => {
 
     const filePaths = fileNames.filter((filename) => extensions.includes(path.extname(filename).toLowerCase()));
@@ -44,6 +61,8 @@ const check = () => {
 };
 
 const fix = () => {
+  const filterWordsContent = fs.readFileSync('ignore_dictionary.txt', 'utf-8');
+  const filterWords = filterWordsContent.split(/\n/);
   const dirpath = '/content';
   fs.readdir(dirpath, { recursive: true }, (_err, fileNames) => {
 
@@ -86,15 +105,21 @@ const fix = () => {
 
         const correctTextLength = replacement.length;
         const diffLength = correctTextLength - matchLength;
-        const leftPart =  acc.result.slice(0, offset + acc.currentDiffLength);
-        const rightPart = acc.result.slice(offset + matchLength + acc.currentDiffLength);
-        console.log('left part: ', leftPart);
-        console.log('right part: ', rightPart);
+        const incorrectWordStartIndex = offset + matchLength + acc.currentDiffLength;
+        const incorrectWordStopIndex = offset + acc.currentDiffLength;
+
+        const leftPart =  acc.result.slice(0, incorrectWordStopIndex);
+        const rightPart = acc.result.slice(incorrectWordStartIndex);
+
+        const incorrectWord = acc.result.slice(incorrectWordStartIndex, incorrectWordStopIndex);
+
+        if (filterWords.includes(incorrectWord)) {
+          return acc;
+        }
+
         const newResult = `${leftPart}${replacement}${rightPart}`;
         const nextCurrentDiffLength = acc.currentDiffLength + diffLength;
 
-        console.log('newResult:');
-        console.log(newResult);
         return {
           result: newResult,
           currentDiffLength: nextCurrentDiffLength,
@@ -126,4 +151,5 @@ const fix = () => {
 export {
   check,
   fix,
+  addWords,
 };
