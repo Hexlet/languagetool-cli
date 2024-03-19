@@ -19,7 +19,7 @@ run-fix:
 		-v ./fixtures:/content \
 		-v ./bin:/usr/local/bin \
 		hexlet/languagetool-cli \
-		ltcheck.sh fix
+		node ./bin/fix.js
 
 test:
 	docker run --rm \
