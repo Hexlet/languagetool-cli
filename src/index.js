@@ -82,7 +82,7 @@ const fix = () => {
 
         console.log(offset, matchLength);
 
-        const replacement = '\n' + match.replacements.map((r) => r.value).join('\n<-------\n');//_.get(match.replacements, '[0].value', '');
+        const replacement = _.get(match.replacements, '[0].value', '');
 
         const correctTextLength = replacement.length;
         const diffLength = correctTextLength - matchLength;
