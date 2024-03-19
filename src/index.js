@@ -99,21 +99,23 @@ const fix = () => {
           return acc;
         }
 
-        console.log(offset, matchLength);
-
         const replacement = _.get(match.replacements, '[0].value', '');
 
         const correctTextLength = replacement.length;
         const diffLength = correctTextLength - matchLength;
         const incorrectWordStartIndex = offset + matchLength + acc.currentDiffLength;
-        const incorrectWordStopIndex = offset + acc.currentDiffLength;
+        const incorrectWordEndIndex = offset + acc.currentDiffLength;
 
-        const leftPart =  acc.result.slice(0, incorrectWordStopIndex);
+        const leftPart =  acc.result.slice(0, incorrectWordEndIndex);
         const rightPart = acc.result.slice(incorrectWordStartIndex);
 
-        const incorrectWord = acc.result.slice(incorrectWordStartIndex, incorrectWordStopIndex);
+        const incorrectWord = acc.result.slice(incorrectWordStartIndex, incorrectWordEndIndex).trim();
 
-        if (filterWords.includes(incorrectWord)) {
+        // console.log(incorrectWordStartIndex, incorrectWordEndIndex)
+        // console.log('result: ', acc.result);
+        // console.log('incorrectWord: ', incorrectWord);
+
+        if (incorrectWord && filterWords.includes(incorrectWord)) {
           return acc;
         }
 
