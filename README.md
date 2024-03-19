@@ -9,5 +9,5 @@ docker run --rm -v ./<directory>:/content hexlet/languagetool-cli node ./bin/che
 For fixing errors:
 
 ```bash
-docker run --rm -v ./<directory>:/content hexlet/languagetool-cli ltcheck.sh fix
+docker run --rm -v ./<directory>:/content hexlet/languagetool-cli node ./bin/fix.js
 ```
