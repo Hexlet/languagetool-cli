@@ -5,8 +5,16 @@ FROM silviof/docker-languagetool
 
 USER root
 
-RUN apt-get update && apt-get install -y jq
+RUN curl -fsSL https://deb.nodesource.com/setup_21.x | bash -
 
-COPY bin/ltcheck.sh /usr/local/bin/ltcheck.sh
+RUN apt-get update && apt-get install -y jq nodejs
 
-CMD [ "ltcheck.sh" ]
+COPY . .
+
+RUN chmod +x ./start.sh
+
+RUN npm ci
+
+# RUN ./start.sh
+
+CMD [ "node ./bin/check.js" ]
