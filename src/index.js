@@ -34,6 +34,8 @@ const check = () => {
       const fullpath = path.join(dirpath, filepath);
       const content = fs.readFileSync(fullpath, 'utf-8');
 
+      const fileName = fullpath.split('/').slice(2).join('/');
+
       const data = new URLSearchParams({
         text: content,
         language: 'ru-RU',
@@ -47,11 +49,24 @@ const check = () => {
         },
       });
 
-      const result= response.data.matches.map((match) => `${match.message} => ${match.sentence}`); //$(echo "$body" | jq '.matches[] | "\(.message) => \(.sentence)"')
-      
-      console.log(`\n${fullpath}`);
-      console.log(result.join('\n----\n'));
-      console.log(`-------------------${fullpath} done -----------------`);
+      const result= response.data.matches.map((match) => {
+        const { offset, length, replacements } = match;
+        const leftPart =  content.slice(0, offset);
+        const lineCount = leftPart.split('\n').length;
+        const word = content.slice(offset, offset + length);
+
+        const resultText = [
+          `${fileName}#${lineCount}`,
+          `${match.message} в слове "${word}" => ${match.sentence}`,
+          'Предлагаемые варианты:',
+          replacements.map((replacement) => replacement.value).join('\n--\n'),
+        ];
+
+        return resultText.join('\n');
+      });
+
+      console.log(result.join('\n----------------------\n'));
+      console.log(`-------------------${fileName} done -----------------`);
     });
 
     Promise.all(promises).then(() => {
@@ -87,9 +102,10 @@ const fix = () => {
       });
 
       const results = response.data.matches; //$(echo "$body" | jq '.matches[] | "\(.message) => \(.sentence)"')
+      const fileName = fullpath.split('/').slice(1).join('/');
       
       if (!results) {
-        console.log(`-------------------${fullpath} done -----------------`);
+        console.log(`-------------------${fileName} done -----------------`);
         return;
       }
 
@@ -133,7 +149,7 @@ const fix = () => {
 
       fs.writeFileSync(fullpath, totalResult.result, 'utf-8');
 
-      console.log(`\n${fullpath}`);
+      console.log(`\n${fileName}`);
       console.log(`Было:
       ${content}
 
@@ -141,7 +157,7 @@ const fix = () => {
       Стало:
       ${totalResult.result}
       `);
-      console.log(`-------------------${fullpath} done -----------------`);
+      console.log(`-------------------${fileName} done -----------------`);
     });
 
     Promise.all(promises).then(() => {
