@@ -121,7 +121,7 @@ const fix = () => {
       });
 
       const results = response.data.matches; //$(echo "$body" | jq '.matches[] | "\(.message) => \(.sentence)"')
-      const fileName = fullpath.split('/').slice(1).join('/');
+      const fileName = fullpath.split('/').slice(2).join('/');
       
       if (!results) {
         console.log(`-------------------${fileName} done -----------------`);
@@ -138,19 +138,16 @@ const fix = () => {
 
         const correctTextLength = replacement.length;
         const diffLength = correctTextLength - matchLength;
-        const incorrectWordStartIndex = offset + matchLength + acc.currentDiffLength;
-        const incorrectWordEndIndex = offset + acc.currentDiffLength;
 
-        const leftPart =  acc.result.slice(0, incorrectWordEndIndex);
-        const rightPart = acc.result.slice(incorrectWordStartIndex);
+        const incorrectWordStartIndex = offset + acc.currentDiffLength;
+        const incorrectWordEndIndex = incorrectWordStartIndex + matchLength;
+
+        const leftPart =  acc.result.slice(0, incorrectWordStartIndex);
+        const rightPart = acc.result.slice(incorrectWordEndIndex);
 
         const incorrectWord = acc.result.slice(incorrectWordStartIndex, incorrectWordEndIndex).trim();
 
-        // console.log(incorrectWordStartIndex, incorrectWordEndIndex)
-        // console.log('result: ', acc.result);
-        // console.log('incorrectWord: ', incorrectWord);
-
-        if (incorrectWord && filterWords.includes(incorrectWord)) {
+        if (incorrectWord && isFiltered(incorrectWord, filterWords)) {
           return acc;
         }
 
