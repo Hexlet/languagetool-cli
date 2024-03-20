@@ -23,8 +23,23 @@ const addWords = () => {
   return Promise.all(promises).then(() => console.log('Dictionary added'));
 };
 
+const isFiltered = (word, dictionary) => {
+  return dictionary.includes(word);
+  // for (const current in dictionary) {
+  //   const regexp = new RegExp(current);
+
+  //   if (regexp.test(word)) {
+  //     return true;
+  //   }
+  // }
+
+  // return false;
+};
+
 const check = () => {
   const dirpath = '/content';
+  const filterWordsContent = fs.readFileSync('ignore_dictionary.txt', 'utf-8');
+  const filterWords = filterWordsContent.split(/\n/);
 
   fs.readdir(dirpath, { recursive: true }, (_err, fileNames) => {
 
@@ -55,6 +70,10 @@ const check = () => {
         const lineCount = leftPart.split('\n').length;
         const word = content.slice(offset, offset + length);
 
+        if (isFiltered(word, filterWords)) {
+          return null;
+        }
+
         const resultText = [
           `${fileName}#${lineCount}`,
           `${match.message} в слове "${word}" => ${match.sentence}`,
@@ -65,7 +84,7 @@ const check = () => {
         return resultText.join('\n');
       });
 
-      console.log(result.join('\n----------------------\n'));
+      console.log(result.filter((item) => item).join('\n----------------------\n'));
       console.log(`-------------------${fileName} done -----------------`);
     });
 
