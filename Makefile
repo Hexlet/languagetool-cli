@@ -25,3 +25,9 @@ test:
 	docker run --rm \
 		-v ./fixtures:/content \
 		hexlet/languagetool-cli
+
+getWords:
+	docker run --rm \
+		-v ./fixtures:/content \
+		hexlet/languagetool-cli
+		node ./bin/getWords.js

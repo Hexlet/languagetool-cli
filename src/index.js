@@ -24,7 +24,15 @@ const addWords = () => {
 };
 
 const isFiltered = (word, dictionary) => {
-  return dictionary.includes(word);
+  if (dictionary.includes(word)) {
+    return true;
+  }
+
+  if (word.includes('   ')) {
+    return true;
+  }
+
+  return false;
   // for (const current in dictionary) {
   //   const regexp = new RegExp(current);
 
@@ -90,6 +98,54 @@ const check = () => {
 
     Promise.all(promises).then(() => {
       console.log('------------------DONE-----------------');
+    });
+  });
+};
+
+const getWrongWords = () => {
+  const dirpath = '/content';
+  const filterWordsContent = fs.readFileSync('ignore_dictionary.txt', 'utf-8');
+  const filterWords = filterWordsContent.split(/\n/);
+
+  fs.readdir(dirpath, { recursive: true }, (_err, fileNames) => {
+
+    const filePaths = fileNames.filter((filename) => extensions.includes(path.extname(filename).toLowerCase()));
+
+    const promises = filePaths.map(async (filepath) => {
+      const fullpath = path.join(dirpath, filepath);
+      const content = fs.readFileSync(fullpath, 'utf-8');
+
+      const fileName = fullpath.split('/').slice(2).join('/');
+
+      const data = new URLSearchParams({
+        text: content,
+        language: 'ru-RU',
+        enabledOnly: 'false',
+      });
+
+      const url = new URL('/v2/check', baseUrl);
+      const response = await axios.post(url.toString(), data, { 
+        headers: {
+          Accept: 'application/json',
+        },
+      });
+
+      const result= response.data.matches.map((match) => {
+        const { offset, length, replacements } = match;
+        const word = content.slice(offset, offset + length);
+
+        if (isFiltered(word, filterWords)) {
+          return null;
+        }
+
+        return word;
+      });
+
+      return result.filter((item) => item).join('\n');
+    });
+
+    Promise.all(promises).then((words) => {
+      fs.writeFileSync(path.join(dirpath, 'wrong_words.txt'), words.join('\n'), 'utf-8');
     });
   });
 };
@@ -185,5 +241,5 @@ const fix = () => {
 export {
   check,
   fix,
-  addWords,
+  getWrongWords,
 };
