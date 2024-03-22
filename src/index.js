@@ -44,7 +44,7 @@ const isFiltered = (word, dictionary) => {
   // return false;
 };
 
-const check = () => {
+const check = (rules = []) => {
   const dirpath = '/content';
   const filterWordsContent = fs.readFileSync('ignore_dictionary.txt', 'utf-8');
   const filterWords = filterWordsContent.split(/\n/);
@@ -62,7 +62,8 @@ const check = () => {
       const data = new URLSearchParams({
         text: content,
         language: 'ru-RU',
-        enabledOnly: 'false',
+        enabledOnly: rules.length > 0,
+        enabledRules: rules.join(','),
       });
 
       const url = new URL('/v2/check', baseUrl);
@@ -102,7 +103,7 @@ const check = () => {
   });
 };
 
-const getWrongWords = () => {
+const getWrongWords = (rules = []) => {
   const dirpath = '/content';
   const filterWordsContent = fs.readFileSync('ignore_dictionary.txt', 'utf-8');
   const filterWords = filterWordsContent.split(/\n/);
@@ -120,7 +121,8 @@ const getWrongWords = () => {
       const data = new URLSearchParams({
         text: content,
         language: 'ru-RU',
-        enabledOnly: 'false',
+        enabledOnly: rules.length > 0,
+        enabledRules: rules.join(','),
       });
 
       const url = new URL('/v2/check', baseUrl);
@@ -150,7 +152,7 @@ const getWrongWords = () => {
   });
 };
 
-const fix = () => {
+const fix = (rules = []) => {
   const filterWordsContent = fs.readFileSync('ignore_dictionary.txt', 'utf-8');
   const filterWords = filterWordsContent.split(/\n/);
   const dirpath = '/content';
@@ -165,8 +167,8 @@ const fix = () => {
       const data = new URLSearchParams({
         text: content,
         language: 'ru-RU',
-        enabledOnly: 'false',
-        disabledCategories: ignoreRules.join(','),
+        enabledOnly: rules.length > 0,
+        enabledRules: rules.join(','),
       });
 
       const url = new URL('/v2/check', baseUrl);
