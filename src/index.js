@@ -116,8 +116,6 @@ const getWrongWords = (rules = []) => {
       const fullpath = path.join(dirpath, filepath);
       const content = fs.readFileSync(fullpath, 'utf-8');
 
-      const fileName = fullpath.split('/').slice(2).join('/');
-
       const data = new URLSearchParams({
         text: content,
         language: 'ru-RU',
@@ -137,17 +135,17 @@ const getWrongWords = (rules = []) => {
         const word = content.slice(offset, offset + length);
 
         if (isFiltered(word, filterWords)) {
-          return null;
+          return '';
         }
 
-        return word;
+        return word.trim();
       });
 
       return result.filter((item) => item).join('\n');
     });
 
     Promise.all(promises).then((words) => {
-      fs.writeFileSync(path.join(dirpath, 'wrong_words.txt'), words.join('\n'), 'utf-8');
+      fs.writeFileSync(path.join(dirpath, 'wrong_words.txt'), words.map((w) => w.trim()).filter((w) => w).join('\n'), 'utf-8');
     });
   });
 };
