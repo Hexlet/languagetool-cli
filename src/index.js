@@ -4,7 +4,6 @@ import path from 'path';
 import _ from 'lodash';
 
 const baseUrl = 'http://localhost:8010';
-const extensions = ['.md', '.adoc'];
 const ignoreRules = ['STYLE'];
 
 const addWords = () => {
@@ -44,6 +43,11 @@ const isFiltered = (word, dictionary) => {
   // return false;
 };
 
+const prepareTextFilepaths = (filePaths) => {
+  const textFilesExtensions = ['.md', '.adoc'];
+  return filePaths.filter((filename) => textFilesExtensions.includes(path.extname(filename).toLowerCase()))
+};
+
 const check = (rules = []) => {
   const dirpath = '/content';
   const filterWordsContent = fs.readFileSync('ignore_dictionary.txt', 'utf-8');
@@ -51,7 +55,7 @@ const check = (rules = []) => {
 
   fs.readdir(dirpath, { recursive: true }, (_err, fileNames) => {
 
-    const filePaths = fileNames.filter((filename) => extensions.includes(path.extname(filename).toLowerCase()));
+    const filePaths = prepareTextFilepaths(fileNames);
 
     const promises = filePaths.map(async (filepath) => {
       const fullpath = path.join(dirpath, filepath);
@@ -67,7 +71,7 @@ const check = (rules = []) => {
       });
 
       const url = new URL('/v2/check', baseUrl);
-      const response = await axios.post(url.toString(), data, { 
+      const response = await axios.post(url.toString(), data, {
         headers: {
           Accept: 'application/json',
         },
@@ -110,9 +114,10 @@ const getWrongWords = (rules = []) => {
 
   fs.readdir(dirpath, { recursive: true }, (_err, fileNames) => {
 
-    const filePaths = fileNames.filter((filename) => extensions.includes(path.extname(filename).toLowerCase()));
+    const filePaths = prepareTextFilepaths(fileNames);
 
     const promises = filePaths.map(async (filepath) => {
+      console.log(`start processing: ${filepath}`);
       const fullpath = path.join(dirpath, filepath);
       const content = fs.readFileSync(fullpath, 'utf-8');
 
@@ -124,7 +129,7 @@ const getWrongWords = (rules = []) => {
       });
 
       const url = new URL('/v2/check', baseUrl);
-      const response = await axios.post(url.toString(), data, { 
+      const response = await axios.post(url.toString(), data, {
         headers: {
           Accept: 'application/json',
         },
@@ -156,7 +161,7 @@ const fix = (rules = []) => {
   const dirpath = '/content';
   fs.readdir(dirpath, { recursive: true }, (_err, fileNames) => {
 
-    const filePaths = fileNames.filter((filename) => extensions.includes(path.extname(filename).toLowerCase()));
+    const filePaths = prepareTextFilepaths(fileNames);
 
     const promises = filePaths.map(async (filepath) => {
       const fullpath = path.join(dirpath, filepath);
@@ -170,7 +175,7 @@ const fix = (rules = []) => {
       });
 
       const url = new URL('/v2/check', baseUrl);
-      const response = await axios.post(url.toString(), data, { 
+      const response = await axios.post(url.toString(), data, {
         headers: {
           Accept: 'application/json',
         },
@@ -178,7 +183,7 @@ const fix = (rules = []) => {
 
       const results = response.data.matches; //$(echo "$body" | jq '.matches[] | "\(.message) => \(.sentence)"')
       const fileName = fullpath.split('/').slice(2).join('/');
-      
+
       if (!results) {
         console.log(`-------------------${fileName} done -----------------`);
         return;
