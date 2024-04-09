@@ -7,6 +7,7 @@ import {
   getPaths,
   formatMessage,
   parseCheckedResult,
+  printFixResult,
 } from './utils.js';
 
 import { check } from './languageToolApi.js';
