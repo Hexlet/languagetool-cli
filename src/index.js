@@ -3,25 +3,14 @@ import fs from 'fs';
 import path from 'path';
 import _ from 'lodash';
 
-const baseUrl = 'http://localhost:8010';
-const extensions = ['.md', '.adoc'];
-const ignoreRules = ['STYLE'];
+import {
+  getPaths,
+  formatMessage,
+  parseCheckedResult,
+} from './utils.js';
 
-const addWords = () => {
-  const content = fs.readFileSync('ignore_dictionary.txt', 'utf-8');
-  const words = content.split(/\s/);
+import { check } from './languageToolApi.js';
 
-  const url = new URL('/v2/add', baseUrl);
-
-  const promises = words.map((word) => {
-    const data = new URLSearchParams({
-      word,
-    });
-    return axios.post(url, data);
-  });
-
-  return Promise.all(promises).then(() => console.log('Dictionary added'));
-};
 
 const isFiltered = (word, dictionary) => {
   if (dictionary.includes(word)) {
@@ -44,202 +33,122 @@ const isFiltered = (word, dictionary) => {
   // return false;
 };
 
-const check = (rules = []) => {
-  const dirpath = '/content';
+const runCheck = async (rules = []) => {
   const filterWordsContent = fs.readFileSync('ignore_dictionary.txt', 'utf-8');
   const filterWords = filterWordsContent.split(/\n/);
 
-  fs.readdir(dirpath, { recursive: true }, (_err, fileNames) => {
+  const filePaths = await getPaths();
 
-    const filePaths = fileNames.filter((filename) => extensions.includes(path.extname(filename).toLowerCase()));
+  const promises = filePaths.map(async (fullpath) => {
+    const content = fs.readFileSync(fullpath, 'utf-8');
 
-    const promises = filePaths.map(async (filepath) => {
-      const fullpath = path.join(dirpath, filepath);
-      const content = fs.readFileSync(fullpath, 'utf-8');
+    const fileName = fullpath.split('/').slice(2).join('/');
 
-      const fileName = fullpath.split('/').slice(2).join('/');
+    const checkResult = await check(content, rules);
 
-      const data = new URLSearchParams({
-        text: content,
-        language: 'ru-RU',
-        enabledOnly: rules.length > 0,
-        enabledRules: rules.join(','),
-      });
+    const result= checkResult.matches.map((match) => {
+      const { offset, length, replacements } = match;
+      const leftPart =  content.slice(0, offset);
+      const lineCount = leftPart.split('\n').length;
+      const word = content.slice(offset, offset + length);
 
-      const url = new URL('/v2/check', baseUrl);
-      const response = await axios.post(url.toString(), data, { 
-        headers: {
-          Accept: 'application/json',
-        },
-      });
-
-      const result= response.data.matches.map((match) => {
-        const { offset, length, replacements } = match;
-        const leftPart =  content.slice(0, offset);
-        const lineCount = leftPart.split('\n').length;
-        const word = content.slice(offset, offset + length);
-
-        if (isFiltered(word, filterWords)) {
-          return null;
-        }
-
-        const resultText = [
-          `${fileName}#${lineCount}`,
-          `${match.message} в слове "${word}" => ${match.sentence}`,
-          'Предлагаемые варианты:',
-          replacements.map((replacement) => replacement.value).join('\n--\n'),
-        ];
-
-        return resultText.join('\n');
-      });
-
-      console.log(result.filter((item) => item).join('\n----------------------\n'));
-      console.log(`-------------------${fileName} done -----------------`);
-    });
-
-    Promise.all(promises).then(() => {
-      console.log('------------------DONE-----------------');
-    });
-  });
-};
-
-const getWrongWords = (rules = []) => {
-  const dirpath = '/content';
-  const filterWordsContent = fs.readFileSync('ignore_dictionary.txt', 'utf-8');
-  const filterWords = filterWordsContent.split(/\n/);
-
-  fs.readdir(dirpath, { recursive: true }, (_err, fileNames) => {
-
-    const filePaths = fileNames.filter((filename) => extensions.includes(path.extname(filename).toLowerCase()));
-
-    const promises = filePaths.map(async (filepath) => {
-      const fullpath = path.join(dirpath, filepath);
-      const content = fs.readFileSync(fullpath, 'utf-8');
-
-      const data = new URLSearchParams({
-        text: content,
-        language: 'ru-RU',
-        enabledOnly: rules.length > 0,
-        enabledRules: rules.join(','),
-      });
-
-      const url = new URL('/v2/check', baseUrl);
-      const response = await axios.post(url.toString(), data, { 
-        headers: {
-          Accept: 'application/json',
-        },
-      });
-
-      const result= response.data.matches.map((match) => {
-        const { offset, length, replacements } = match;
-        const word = content.slice(offset, offset + length);
-
-        if (isFiltered(word, filterWords)) {
-          return '';
-        }
-
-        return word.trim();
-      });
-
-      return result.filter((item) => item).join('\n');
-    });
-
-    Promise.all(promises).then((words) => {
-      fs.writeFileSync(path.join(dirpath, 'wrong_words.txt'), words.map((w) => w.trim()).filter((w) => w).join('\n'), 'utf-8');
-    });
-  });
-};
-
-const fix = (rules = []) => {
-  const filterWordsContent = fs.readFileSync('ignore_dictionary.txt', 'utf-8');
-  const filterWords = filterWordsContent.split(/\n/);
-  const dirpath = '/content';
-  fs.readdir(dirpath, { recursive: true }, (_err, fileNames) => {
-
-    const filePaths = fileNames.filter((filename) => extensions.includes(path.extname(filename).toLowerCase()));
-
-    const promises = filePaths.map(async (filepath) => {
-      const fullpath = path.join(dirpath, filepath);
-      const content = fs.readFileSync(fullpath, 'utf-8');
-
-      const data = new URLSearchParams({
-        text: content,
-        language: 'ru-RU',
-        enabledOnly: rules.length > 0,
-        enabledRules: rules.join(','),
-      });
-
-      const url = new URL('/v2/check', baseUrl);
-      const response = await axios.post(url.toString(), data, { 
-        headers: {
-          Accept: 'application/json',
-        },
-      });
-
-      const results = response.data.matches; //$(echo "$body" | jq '.matches[] | "\(.message) => \(.sentence)"')
-      const fileName = fullpath.split('/').slice(2).join('/');
-      
-      if (!results) {
-        console.log(`-------------------${fileName} done -----------------`);
-        return;
+      if (isFiltered(word, filterWords)) {
+        return null;
       }
 
-      const totalResult = results.reduce((acc, match) => {
-        const { offset, length: matchLength, replacements } = match;
-        if (!replacements) {
-          return acc;
-        }
+      const resultText = [
+        `${fileName}#${lineCount}`,
+        `${match.message} в слове "${word}" => ${match.sentence}`,
+        formatMessage('Предлагаемые варианты:'),
+        replacements.map((replacement) => replacement.value).join('\n--\n'),
+      ];
 
-        const replacement = _.get(match.replacements, '[0].value', '');
+      return resultText.join('\n');
+    });
 
-        const correctTextLength = replacement.length;
-        const diffLength = correctTextLength - matchLength;
+    console.log(result.filter((item) => item).join('\n----------------------\n'));
+    console.log(`-------------------${fileName} done -----------------`);
+  });
 
-        const incorrectWordStartIndex = offset + acc.currentDiffLength;
-        const incorrectWordEndIndex = incorrectWordStartIndex + matchLength;
+  Promise.all(promises).then(() => {
+    console.log('------------------DONE-----------------');
+  });
+};
 
-        const leftPart =  acc.result.slice(0, incorrectWordStartIndex);
-        const rightPart = acc.result.slice(incorrectWordEndIndex);
+const getWrongWords = async (rules = []) => {
+  const filterWordsContent = fs.readFileSync('ignore_dictionary.txt', 'utf-8');
+  const filterWords = filterWordsContent.split(/\n/);
 
-        const incorrectWord = acc.result.slice(incorrectWordStartIndex, incorrectWordEndIndex).trim();
+  const filePaths = await getPaths();
 
-        if (incorrectWord && isFiltered(incorrectWord, filterWords)) {
-          return acc;
-        }
+  const promises = filePaths.map(async (fullpath) => {
+    const content = fs.readFileSync(fullpath, 'utf-8');
 
-        const newResult = `${leftPart}${replacement}${rightPart}`;
-        const nextCurrentDiffLength = acc.currentDiffLength + diffLength;
+    const data = await check(content, rules);
 
-        return {
-          result: newResult,
-          currentDiffLength: nextCurrentDiffLength,
-        };
-      }, {
-        result: content,
-        currentDiffLength: 0,
-      });
+    const result= data.matches.map((match) => {
+      const { offset, length } = match;
+      const word = content.slice(offset, offset + length);
 
-      fs.writeFileSync(fullpath, totalResult.result, 'utf-8');
+      if (isFiltered(word, filterWords)) {
+        return '';
+      }
 
-      console.log(`\n${fileName}`);
-      console.log(`Было:
-      ${content}
+      return word.trim();
+    });
 
-      ---------
-      Стало:
-      ${totalResult.result}
-      `);
+    return result.filter((item) => item).join('\n');
+  });
+
+  Promise.all(promises).then((words) => {
+    fs.writeFileSync(path.join(dirpath, 'wrong_words.txt'), words.map((w) => w.trim()).filter((w) => w).join('\n'), 'utf-8');
+  });
+};
+
+const fix = async (rules = []) => {
+  const filterWordsContent = fs.readFileSync('ignore_dictionary.txt', 'utf-8');
+  const filterWords = filterWordsContent.split(/\n/);
+
+  const filePaths = await getPaths();
+  const promises = filePaths.map(async (fullpath) => {
+    const content = fs.readFileSync(fullpath, 'utf-8');
+
+    const checkResults = await check(content, rules);
+
+    const results = checkResults.matches; //$(echo "$body" | jq '.matches[] | "\(.message) => \(.sentence)"')
+    const fileName = fullpath.split('/').slice(2).join('/');
+    
+    if (!results) {
       console.log(`-------------------${fileName} done -----------------`);
-    });
+      return;
+    }
 
-    Promise.all(promises).then(() => {
-      console.log('------------------DONE-----------------');
-    });
+    const totalResult = results.reduce((acc, match) => {
+
+      const parsed = parseCheckedResult(match, acc.result, acc.currentDiffLength);
+
+      if (!parsed || (parsed.incorrectWord && isFiltered(parsed.incorrectWord, filterWords))) {
+        return acc;
+      }
+
+      return {
+        result: parsed.result,
+        currentDiffLength: parsed.currentDiffLength,
+      };
+    }, { result: content, currentDiffLength: 0 });
+
+    fs.writeFileSync(fullpath, totalResult.result, 'utf-8');
+
+    printFixResult(content, totalResult.result, fileName);
+  });
+
+  Promise.all(promises).then(() => {
+    console.log('------------------DONE-----------------');
   });
 };
 
 export {
-  check,
+  runCheck,
   fix,
   getWrongWords,
 };
