@@ -94,7 +94,10 @@ const getWrongWords = async (rules = []) => {
   });
 };
 
-const checkContent = async (conent) => {
+const checkContent = async (content) => {
+  const filterWordsContent = fs.readFileSync('ignore_dictionary.txt', 'utf-8');
+  const filterWords = filterWordsContent.split(/\n/);
+
   const checkResults = await check(content, rules);
 
   const results = checkResults.matches; //$(echo "$body" | jq '.matches[] | "\(.message) => \(.sentence)"')
@@ -139,9 +142,6 @@ const checkTree = (source) => {
 }
 
 const fix = async (rules = []) => {
-  const filterWordsContent = fs.readFileSync('ignore_dictionary.txt', 'utf-8');
-  const filterWords = filterWordsContent.split(/\n/);
-
   const filePaths = await getPaths();
   const promises = filePaths.map(async (fullpath) => {
     const content = fs.readFileSync(fullpath, 'utf-8');
