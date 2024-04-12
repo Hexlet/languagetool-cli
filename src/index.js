@@ -107,7 +107,7 @@ const getWrongWords = async (rules = []) => {
   });
 };
 
-const checkContent = async (content) => {
+const checkContent = async (content, rules) => {
 
   const checkResults = await check(content, rules);
 
@@ -135,13 +135,13 @@ const checkContent = async (content) => {
   return totalResult.result;
 };
 
-const checkTree = (source) => {
+const checkTree = (source, rules) => {
   const iter = async (tree) => {
     if (filterBlocks.includes(tree.type)) {
       return Promise.resolve();
     }
 
-    tree.value = await checkContent(tree.value);
+    tree.value = await checkContent(tree.value, rules);
 
     if (tree.children) {
       return Promise.all(tree.children.map(iter));
@@ -160,7 +160,7 @@ const fix = async (rules = []) => {
 
     const parsedContent = fromMarkdown(content);
 
-    checkTree(parsedContent);
+    checkTree(parsedContent, rules);
 
     const finalResult = toMarkdown(parsedContent);
 
