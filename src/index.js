@@ -20,6 +20,21 @@ const filterBlocks = [
   'inlineCode',
 ];
 
+const filterWordsContent = fs.readFileSync('ignore_dictionary.txt', 'utf-8');
+const filterWords = filterWordsContent.split(/\n/);
+
+const isFiltered = (word) => {
+  if (filterWords.includes(word)) {
+    return true;
+  }
+
+  if (word.includes('   ')) {
+    return true;
+  }
+
+  return false;
+};
+
 const runCheck = async (rules = []) => {
 
   const filePaths = await getPaths();
@@ -41,7 +56,7 @@ const runCheck = async (rules = []) => {
       const lineCount = leftPart.split('\n').length;
       const word = content.slice(offset, offset + length);
 
-      if (isFiltered(word, filterWords)) {
+      if (isFiltered(word)) {
         return null;
       }
 
@@ -65,8 +80,6 @@ const runCheck = async (rules = []) => {
 };
 
 const getWrongWords = async (rules = []) => {
-  const filterWordsContent = fs.readFileSync('ignore_dictionary.txt', 'utf-8');
-  const filterWords = filterWordsContent.split(/\n/);
 
   const filePaths = await getPaths();
 
@@ -79,7 +92,7 @@ const getWrongWords = async (rules = []) => {
       const { offset, length } = match;
       const word = content.slice(offset, offset + length);
 
-      if (isFiltered(word, filterWords)) {
+      if (isFiltered(word)) {
         return '';
       }
 
@@ -95,8 +108,6 @@ const getWrongWords = async (rules = []) => {
 };
 
 const checkContent = async (content) => {
-  const filterWordsContent = fs.readFileSync('ignore_dictionary.txt', 'utf-8');
-  const filterWords = filterWordsContent.split(/\n/);
 
   const checkResults = await check(content, rules);
 
@@ -111,7 +122,7 @@ const checkContent = async (content) => {
 
     const parsed = parseCheckedResult(match, acc.result, acc.currentDiffLength);
 
-    if (!parsed || (parsed.incorrectWord && isFiltered(parsed.incorrectWord, filterWords))) {
+    if (!parsed || (parsed.incorrectWord && isFiltered(parsed.incorrectWord))) {
       return acc;
     }
 
