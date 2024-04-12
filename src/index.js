@@ -2,6 +2,8 @@ import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
 import _ from 'lodash';
+import { fromMarkdown } from 'mdast-util-from-markdown';
+import { toMarkdown } from 'mdast-util-to-markdown'
 
 import {
   getPaths,
@@ -11,39 +13,25 @@ import {
 } from './utils.js';
 
 import { check } from './languageToolApi.js';
+import Checker from './markdownParser.js';
 
-
-const isFiltered = (word, dictionary) => {
-  if (dictionary.includes(word)) {
-    return true;
-  }
-
-  if (word.includes('   ')) {
-    return true;
-  }
-
-  return false;
-  // for (const current in dictionary) {
-  //   const regexp = new RegExp(current);
-
-  //   if (regexp.test(word)) {
-  //     return true;
-  //   }
-  // }
-
-  // return false;
-};
+const filterBlocks = [
+  'code',
+  'inlineCode',
+];
 
 const runCheck = async (rules = []) => {
-  const filterWordsContent = fs.readFileSync('ignore_dictionary.txt', 'utf-8');
-  const filterWords = filterWordsContent.split(/\n/);
 
   const filePaths = await getPaths();
 
   const promises = filePaths.map(async (fullpath) => {
-    const content = fs.readFileSync(fullpath, 'utf-8');
+    const sourceContent = fs.readFileSync(fullpath, 'utf-8');
 
     const fileName = fullpath.split('/').slice(2).join('/');
+
+    const parser = new Checker(rules);
+
+    const content = parser.filterContent(sourceContent);
 
     const checkResult = await check(content, rules);
 
@@ -58,10 +46,10 @@ const runCheck = async (rules = []) => {
       }
 
       const resultText = [
-        `${fileName}#${lineCount}`,
-        `${match.message} в слове "${word}" => ${match.sentence}`,
-        formatMessage('Предлагаемые варианты:'),
-        replacements.map((replacement) => replacement.value).join('\n--\n'),
+        formatMessage(`${fileName}#${lineCount}`, 'blue'),
+        formatMessage(`${match.message} в слове "${word}" => ${match.sentence}`, 'red'),
+        formatMessage('Предлагаемые варианты:', 'blue'),
+        formatMessage(replacements.map((replacement) => replacement.value).join('\n--\n'), 'green'),
       ];
 
       return resultText.join('\n');
@@ -106,6 +94,50 @@ const getWrongWords = async (rules = []) => {
   });
 };
 
+const checkContent = async (conent) => {
+  const checkResults = await check(content, rules);
+
+  const results = checkResults.matches; //$(echo "$body" | jq '.matches[] | "\(.message) => \(.sentence)"')
+  // const fileName = fullpath.split('/').slice(2).join('/');
+  
+  if (!results) {
+    return '';
+  }
+
+  const totalResult = results.reduce((acc, match) => {
+
+    const parsed = parseCheckedResult(match, acc.result, acc.currentDiffLength);
+
+    if (!parsed || (parsed.incorrectWord && isFiltered(parsed.incorrectWord, filterWords))) {
+      return acc;
+    }
+
+    return {
+      result: parsed.result,
+      currentDiffLength: parsed.currentDiffLength,
+    };
+  }, { result: content, currentDiffLength: 0 });
+
+  return totalResult.result;
+};
+
+const checkTree = (source) => {
+  const iter = async (tree) => {
+    if (filterBlocks.includes(tree.type)) {
+      return Promise.resolve();
+    }
+
+    tree.value = await checkContent(tree.value);
+
+    if (tree.children) {
+      return Promise.all(tree.children.map(iter));
+    }
+    return Promise.resolve();
+  };
+
+  return iter(source);
+}
+
 const fix = async (rules = []) => {
   const filterWordsContent = fs.readFileSync('ignore_dictionary.txt', 'utf-8');
   const filterWords = filterWordsContent.split(/\n/);
@@ -113,34 +145,17 @@ const fix = async (rules = []) => {
   const filePaths = await getPaths();
   const promises = filePaths.map(async (fullpath) => {
     const content = fs.readFileSync(fullpath, 'utf-8');
-
-    const checkResults = await check(content, rules);
-
-    const results = checkResults.matches; //$(echo "$body" | jq '.matches[] | "\(.message) => \(.sentence)"')
     const fileName = fullpath.split('/').slice(2).join('/');
-    
-    if (!results) {
-      console.log(`-------------------${fileName} done -----------------`);
-      return;
-    }
 
-    const totalResult = results.reduce((acc, match) => {
+    const parsedContent = fromMarkdown(content);
 
-      const parsed = parseCheckedResult(match, acc.result, acc.currentDiffLength);
+    checkTree(parsedContent);
 
-      if (!parsed || (parsed.incorrectWord && isFiltered(parsed.incorrectWord, filterWords))) {
-        return acc;
-      }
+    const finalResult = toMarkdown(parsedContent);
 
-      return {
-        result: parsed.result,
-        currentDiffLength: parsed.currentDiffLength,
-      };
-    }, { result: content, currentDiffLength: 0 });
+    fs.writeFileSync(fullpath, finalResult, 'utf-8');
 
-    fs.writeFileSync(fullpath, totalResult.result, 'utf-8');
-
-    printFixResult(content, totalResult.result, fileName);
+    printFixResult(content, finalResult, fileName);
   });
 
   Promise.all(promises).then(() => {
