@@ -162,7 +162,9 @@ const fix = async (rules = []) => {
 
     checkTree(parsedContent, rules);
 
-    const finalResult = toMarkdown(parsedContent);
+    const finalResult = toMarkdown(parsedContent, {
+      emphasis: '_',
+    });
 
     fs.writeFileSync(fullpath, finalResult, 'utf-8');
 
