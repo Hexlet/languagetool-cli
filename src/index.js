@@ -111,8 +111,7 @@ const checkContent = async (content, rules) => {
 
   const checkResults = await check(content, rules);
 
-  const results = checkResults.matches; //$(echo "$body" | jq '.matches[] | "\(.message) => \(.sentence)"')
-  // const fileName = fullpath.split('/').slice(2).join('/');
+  const results = checkResults.matches;
   
   if (!results) {
     return '';
@@ -138,15 +137,17 @@ const checkContent = async (content, rules) => {
 const checkTree = (source, rules) => {
   const iter = async (tree) => {
     if (filterBlocks.includes(tree.type)) {
-      return Promise.resolve();
+      return tree;
     }
 
-    tree.value = await checkContent(tree.value, rules);
+    const newValue = await checkContent(tree.value, rules);
+
+    tree.value = newValue;
 
     if (tree.children) {
-      return Promise.all(tree.children.map(iter));
+      tree.children = await Promise.all(tree.children.map(iter));
     }
-    return Promise.resolve();
+    return tree;
   };
 
   return iter(source);
@@ -160,9 +161,9 @@ const fix = async (rules = []) => {
 
     const parsedContent = fromMarkdown(content);
 
-    checkTree(parsedContent, rules);
+    const fixedContent = await checkTree(parsedContent, rules);
 
-    const finalResult = toMarkdown(parsedContent, {
+    const finalResult = toMarkdown(fixedContent, {
       emphasis: '_',
     });
 

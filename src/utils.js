@@ -5,7 +5,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import _ from 'lodash';
 
-const extensions = ['.md', '.adoc'];
+const extensions = ['.md'];
 
 export const formatMessage = (msg, color = 'dark') => {
   if (!clc[color]) {
