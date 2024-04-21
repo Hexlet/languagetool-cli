@@ -21,10 +21,10 @@ const filterBlocks = [
 ];
 
 const filterWordsContent = fs.readFileSync('ignore_dictionary.txt', 'utf-8');
-const filterWords = filterWordsContent.split(/\n/);
+const filterWords = filterWordsContent.split(/\n/).map((word) => word.toLowerCase());
 
 const isFiltered = (word) => {
-  if (filterWords.includes(word)) {
+  if (filterWords.includes(word.toLowerCase())) {
     return true;
   }
 
@@ -140,9 +140,13 @@ const checkTree = (source, rules) => {
       return tree;
     }
 
-    const newValue = await checkContent(tree.value, rules);
+    try {
+      const newValue = await checkContent(tree.value, rules);
 
-    tree.value = newValue;
+      tree.value = newValue;
+    } catch(e) {
+      console.error(tree.value);
+    }
 
     if (tree.children) {
       tree.children = await Promise.all(tree.children.map(iter));
