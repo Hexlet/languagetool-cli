@@ -11,10 +11,6 @@ RUN apt-get update && apt-get install -y jq nodejs
 
 COPY . .
 
-RUN chmod +x ./start.sh
-
 RUN npm ci
-
-# RUN ./start.sh
 
 CMD [ "node ./bin/check.js" ]
