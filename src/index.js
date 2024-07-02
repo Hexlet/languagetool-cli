@@ -35,9 +35,9 @@ const isFiltered = (word) => {
   return false;
 };
 
-const getWrongWords = async (rules = []) => {
+const getWrongWords = async (dirPath, rules = []) => {
 
-  const filePaths = await getFilePaths();
+  const filePaths = await getFilePaths(dirPath);
 
   const promises = filePaths.map(async (fullpath) => {
     const content = fs.readFileSync(fullpath, 'utf-8');
@@ -58,8 +58,8 @@ const getWrongWords = async (rules = []) => {
     return result.filter((item) => item).join('\n');
   });
 
-  Promise.all(promises).then((words) => {
-    fs.writeFileSync(path.join(dirpath, 'wrong_words.txt'), words.map((w) => w.trim()).filter((w) => w).join('\n'), 'utf-8');
+  return Promise.all(promises).then((words) => {
+    return words.map((w) => w.trim()).filter((w) => w);
   });
 };
 
