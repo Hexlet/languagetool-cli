@@ -171,7 +171,7 @@ const getErrors = async (dirPath = '/content', rules = []) => {
     return resultCheckFile;
   });
 
-  return Promise.all(promises).then((results) => results.flat()).catch((e) => console.log(e));
+  return Promise.all(promises).then((results) => results.flat().filter((item) => item));
 };
 
 const formatContextMessage = (context, offset, length) => {
