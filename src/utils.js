@@ -5,7 +5,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import _ from 'lodash';
 
-const extensions = ['.md'];
+const defaultExtensions = ['.md'];
 
 export const formatMessage = (msg, color = 'dark') => {
   if (!clc[color]) {
@@ -16,7 +16,7 @@ export const formatMessage = (msg, color = 'dark') => {
 
 export const formatError = (err) => clc.red(err);
 
-export const getPaths = async (dirpath = '/content') => {
+export const getFilePaths = async (dirpath, extensions = defaultExtensions) => {
   const fileNames = await fs.readdir(dirpath, { recursive: true });
   
   const filePaths = fileNames.filter((filename) => extensions.includes(path.extname(filename).toLowerCase()));

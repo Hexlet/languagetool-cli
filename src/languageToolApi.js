@@ -22,10 +22,7 @@ export const check = async (content, rules = []) => {
   return response.data;
 };
 
-const addWords = (words) => {
-  // const content = fs.readFileSync('ignore_dictionary.txt', 'utf-8');
-  // const words = content.split(/\s/);
-
+export const addWords = (words) => {
   const url = new URL('/v2/add', baseUrl);
 
   const promises = words.map((word) => {

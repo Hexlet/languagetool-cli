@@ -7,10 +7,10 @@ bash:
 		-v ./bin:/usr/local/bin \
 		hexlet/languagetool-cli bash
 
-run:
+check:
 	docker run --rm \
 		-v ./fixtures:/content \
-		-v ./bin:/usr/local/bin \
+		-v ./bin:/LanguageTool-6.3/bin \
 		-v ./src:/LanguageTool-6.3/src \
 		hexlet/languagetool-cli \
 		node ./bin/check.js

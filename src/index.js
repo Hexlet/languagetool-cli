@@ -6,7 +6,7 @@ import { fromMarkdown } from 'mdast-util-from-markdown';
 import { toMarkdown } from 'mdast-util-to-markdown'
 
 import {
-  getPaths,
+  getFilePaths,
   formatMessage,
   parseCheckedResult,
   printFixResult,
@@ -35,53 +35,9 @@ const isFiltered = (word) => {
   return false;
 };
 
-const runCheck = async (rules = []) => {
-
-  const filePaths = await getPaths();
-
-  const promises = filePaths.map(async (fullpath) => {
-    const sourceContent = fs.readFileSync(fullpath, 'utf-8');
-
-    const fileName = fullpath.split('/').slice(2).join('/');
-
-    const parser = new Checker(rules);
-
-    const content = parser.filterContent(sourceContent);
-
-    const checkResult = await check(content, rules);
-
-    const result= checkResult.matches.map((match) => {
-      const { offset, length, replacements } = match;
-      const leftPart =  content.slice(0, offset);
-      const lineCount = leftPart.split('\n').length;
-      const word = content.slice(offset, offset + length);
-
-      if (isFiltered(word)) {
-        return null;
-      }
-
-      const resultText = [
-        formatMessage(`${fileName}#${lineCount}`, 'blue'),
-        formatMessage(`${match.message} в слове "${word}" => ${match.sentence}`, 'red'),
-        formatMessage('Предлагаемые варианты:', 'blue'),
-        formatMessage(replacements.map((replacement) => replacement.value).join('\n--\n'), 'green'),
-      ];
-
-      return resultText.join('\n');
-    });
-
-    console.log(result.filter((item) => item).join('\n----------------------\n'));
-    console.log(`-------------------${fileName} done -----------------`);
-  });
-
-  Promise.all(promises).then(() => {
-    console.log('------------------DONE-----------------');
-  });
-};
-
 const getWrongWords = async (rules = []) => {
 
-  const filePaths = await getPaths();
+  const filePaths = await getFilePaths();
 
   const promises = filePaths.map(async (fullpath) => {
     const content = fs.readFileSync(fullpath, 'utf-8');
@@ -108,7 +64,6 @@ const getWrongWords = async (rules = []) => {
 };
 
 const checkContent = async (content, rules) => {
-
   const checkResults = await check(content, rules);
 
   const results = checkResults.matches;
@@ -158,7 +113,7 @@ const checkTree = (source, rules) => {
 }
 
 const fix = async (rules = []) => {
-  const filePaths = await getPaths();
+  const filePaths = await getFilePaths();
   const promises = filePaths.map(async (fullpath) => {
     const content = fs.readFileSync(fullpath, 'utf-8');
     const fileName = fullpath.split('/').slice(2).join('/');
@@ -176,13 +131,93 @@ const fix = async (rules = []) => {
     printFixResult(content, finalResult, fileName);
   });
 
-  Promise.all(promises).then(() => {
-    console.log('------------------DONE-----------------');
-  });
+  return Promise.all(promises);
 };
 
+const getErrors = async (dirPath = '/content', rules = []) => {
+  const filePaths = await getFilePaths(dirPath);
+
+  const promises = filePaths.map(async (fullpath) => {
+    const sourceContent = fs.readFileSync(fullpath, 'utf-8');
+
+    const fileName = fullpath.split('/').slice(2).join('/');
+
+    const parser = new Checker(rules);
+
+    const content = parser.filterContent(sourceContent);
+
+    const checkResult = await check(content, rules);
+
+    const resultCheckFile = checkResult.matches.map((match) => {
+      const { offset, length, replacements } = match;
+      const leftPart =  content.slice(0, offset);
+      const lineNumber = leftPart.split('\n').length;
+      const word = content.slice(offset, offset + length);
+
+      if (isFiltered(word)) {
+        return null;
+      }
+
+      const result = {
+        fileName,
+        lineNumber,
+        match,
+        replacements
+      };
+
+      return result;
+    });
+
+    return resultCheckFile;
+  });
+
+  return Promise.all(promises).then((results) => results.flat()).catch((e) => console.log(e));
+};
+
+const formatContextMessage = (context, offset, length) => {
+  const leftPart = context.slice(0, offset);
+  const errorPart = context.slice(offset, offset + length);
+  const rightPart =  context.slice(offset + length);
+  
+  const formattedErrorPath = formatMessage(errorPart, 'red');
+
+  const result = `${leftPart}${formattedErrorPath}${rightPart}`;
+  
+  return result;
+}
+
+const formatError = (error) => {
+  const {
+    fileName,
+    lineNumber,
+    match,
+    replacements,
+  } = error;
+
+  const fileLineMessage = formatMessage(`${fileName}#${lineNumber}`, 'blue');
+  const contextMessage = formatContextMessage(match.context.text, match.context.offset, match.context.length);
+
+  const errorMessage = formatMessage(match.message, 'red');
+
+  const formattedReplacements = replacements.map((replacement) => formatMessage(replacement.value, 'green')).join(', ');
+
+  const replacementsMessage = `${formatMessage('Предлагаемые варианты:\n', 'blue')}${formattedReplacements}`;
+
+  const result = [
+    fileLineMessage,
+    contextMessage,
+    errorMessage,
+    formattedReplacements ? replacementsMessage : null,
+  ].filter((item) => item !== null).join('\n');
+
+  return result;
+};
+
+const formatErrors = (errors) => errors.map(formatError);
+
 export {
-  runCheck,
   fix,
   getWrongWords,
+  getErrors,
+  formatErrors,
 };
