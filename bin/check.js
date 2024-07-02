@@ -2,8 +2,9 @@
 
 import { exec } from 'child_process';
 import { getErrors, formatErrors } from '../src/index.js';
+import { getLanguageToolVersion } from '../src/utils.js';
 
-exec('sh /LanguageTool-6.3/start.sh >/dev/null 2>&1 &', () => setTimeout(async () => {
+exec(`sh /LanguageTool-${getLanguageToolVersion}/start.sh >/dev/null 2>&1 &`, () => setTimeout(async () => {
   const rules = process.argv.slice(2);
   const errors = await getErrors('/content', rules);
   if (errors) {

@@ -64,3 +64,5 @@ export const printFixResult = (previousContent, currentContent, fileName) => {
   console.log(formatMessage(currentContent, 'green'));
   console.log(`-------------------${fileName} done -----------------`);
 };
+
+export const getLanguageToolVersion = '6.4';
