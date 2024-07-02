@@ -112,8 +112,8 @@ const checkTree = (source, rules) => {
   return iter(source);
 }
 
-const fix = async (rules = []) => {
-  const filePaths = await getFilePaths();
+const fix = async (dirPath, rules = []) => {
+  const filePaths = await getFilePaths(dirPath);
   const promises = filePaths.map(async (fullpath) => {
     const content = fs.readFileSync(fullpath, 'utf-8');
     const fileName = fullpath.split('/').slice(2).join('/');
