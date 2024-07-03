@@ -20,6 +20,8 @@ const filterBlocks = [
   'inlineCode',
 ];
 
+const errorDelimeter = '\n------------------------\n';
+
 const filterWordsContent = fs.readFileSync('ignore_dictionary.txt', 'utf-8');
 const filterWords = filterWordsContent.split(/\n/).map((word) => word.toLowerCase());
 
@@ -225,24 +227,21 @@ const formatError = (error) => {
 
 const formatErrors = (errors) => errors.map(formatError);
 
-const filterIgnoredErrors = (errors, ignoreFilePath) => {
+const filterIgnoredErrors = (formatedErrors, ignoreFilePath) => {
   if (!fs.existsSync(ignoreFilePath)) {
-    return errors;
+    return formatedErrors;
   }
 
   const ignoreContent = fs.readFileSync(ignoreFilePath, 'utf-8');
-  const ignore = ignoreContent.split(', ');
+  const ignore = ignoreContent.split(errorDelimeter);
 
-  const result = errors.filter((error) => {
-    const lineError = getLineError(error)
-    return !ignore.includes(lineError);
-  });
+  const result = formatedErrors.filter((error) => !ignore.includes(error));
 
   return result;
 };
 
-const writeIgnoreErrorsFile = (errors, ignoreFilePath) => {
-  const result = errors.map(getLineError).join(', ');
+const writeIgnoreErrorsFile = (formatedErrors, ignoreFilePath) => {
+  const result = formatedErrors.join(errorDelimeter);
 
   fs.writeFileSync(ignoreFilePath, result, 'utf-8');
 };
@@ -254,4 +253,5 @@ export {
   formatErrors,
   filterIgnoredErrors,
   writeIgnoreErrorsFile,
+  errorDelimeter,
 };
