@@ -17,13 +17,20 @@ Help:
 ```bash
 docker run --rm -v ./fixtures:/content hexlet/languagetool-cli node ./bin/run.js check -h
 
-Usage: run check [options] <dirPath>
+Usage: run check [options] [dir_path]
+
+Fix errors with overwriting files
+
+Arguments:
+  dir_path                         path to files (default: "/content")
 
 Options:
   -r, --rules "rule1, rule2, ..."  languagetools rules
   -l, --language <Ru-ru>           A language code like en-US, de-DE, fr, or
                                    auto to guess the language automatically
                                    (default: "auto")
+  -i, --ignore <file_path>         Path to file with ignore contexts (default:
+                                   "/content/ignore")
   -h, --help                       display help for command
 ```
 

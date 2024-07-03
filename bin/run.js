@@ -15,7 +15,7 @@ program
   .argument('[dir_path]', 'path to files', '/content')
   .option('-r, --rules "rule1, rule2, ..."', 'languagetools rules', '')
   .option('-l, --language <Ru-ru>', 'A language code like en-US, de-DE, fr, or auto to guess the language automatically', 'auto')
-  .option('-i, --ignore <file_path>', 'Path to file with ignore rules', '/content/ignore')
+  .option('-i, --ignore <file_path>', 'Path to file with ignore contexts', '/content/ignore')
   .action((dirPath, options) => {
     exec(serverStartCommand, () => setTimeout(async () => {
       const rules = options.rules.split(',').map((item) => item.trim()).filter((item) => item);
@@ -24,8 +24,8 @@ program
 
       const errors = await getErrors(dirPath, language, rules);
       const filtered = filterIgnoredErrors(errors, ignorePath);
-      if (filtered) {
-        const formattedErrors = formatErrors(errors);
+      if (filtered.length > 0) {
+        const formattedErrors = formatErrors(filtered);
         console.log(formattedErrors.join('\n------------------------\n'));
         process.exit(1);
       }
@@ -38,7 +38,6 @@ program
   .argument('[dir_path]', 'path to files', '/content')
   .option('-r, --rules "rule1, rule2, ..."', 'languagetools rules', '')
   .option('-l, --language <Ru-ru>', 'A language code like en-US, de-DE, fr, or auto to guess the language automatically', 'auto')
-  .option('-i, --ignore <file_path>', 'Path to file with ignore rules', '/content/ignore')
   .action((dirPath = '/content', options) => {
     exec(serverStartCommand, () => setTimeout(async () => {
       const rules = options.rules.split(',').map((item) => item.trim()).filter((item) => item);
