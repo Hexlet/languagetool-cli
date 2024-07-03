@@ -4,10 +4,10 @@ import axios from 'axios';
 
 const baseUrl = 'http://localhost:8010';
 
-export const check = async (content, rules = []) => {
+export const check = async (content, language, rules = []) => {
   const data = new URLSearchParams({
     text: content,
-    language: 'ru-RU',
+    language,
     enabledOnly: rules.length > 0,
     enabledRules: rules.join(','),
   });

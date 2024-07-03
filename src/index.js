@@ -35,14 +35,14 @@ const isFiltered = (word) => {
   return false;
 };
 
-const getWrongWords = async (dirPath, rules = []) => {
+const getWrongWords = async (dirPath, language, rules = []) => {
 
   const filePaths = await getFilePaths(dirPath);
 
   const promises = filePaths.map(async (fullpath) => {
     const content = fs.readFileSync(fullpath, 'utf-8');
 
-    const data = await check(content, rules);
+    const data = await check(content, language, rules);
 
     const result= data.matches.map((match) => {
       const { offset, length } = match;
@@ -63,8 +63,8 @@ const getWrongWords = async (dirPath, rules = []) => {
   });
 };
 
-const checkContent = async (content, rules) => {
-  const checkResults = await check(content, rules);
+const checkContent = async (content, language, rules) => {
+  const checkResults = await check(content, language, rules);
 
   const results = checkResults.matches;
   
@@ -89,14 +89,14 @@ const checkContent = async (content, rules) => {
   return totalResult.result;
 };
 
-const checkTree = (source, rules) => {
+const checkTree = (source, language, rules) => {
   const iter = async (tree) => {
     if (filterBlocks.includes(tree.type)) {
       return tree;
     }
 
     try {
-      const newValue = await checkContent(tree.value, rules);
+      const newValue = await checkContent(tree.value, language, rules);
 
       tree.value = newValue;
     } catch(e) {
@@ -112,7 +112,7 @@ const checkTree = (source, rules) => {
   return iter(source);
 }
 
-const fix = async (dirPath, rules = []) => {
+const fix = async (dirPath, language, rules = []) => {
   const filePaths = await getFilePaths(dirPath);
   const promises = filePaths.map(async (fullpath) => {
     const content = fs.readFileSync(fullpath, 'utf-8');
@@ -120,7 +120,7 @@ const fix = async (dirPath, rules = []) => {
 
     const parsedContent = fromMarkdown(content);
 
-    const fixedContent = await checkTree(parsedContent, rules);
+    const fixedContent = await checkTree(parsedContent, language, rules);
 
     const finalResult = toMarkdown(fixedContent, {
       emphasis: '_',
@@ -134,7 +134,7 @@ const fix = async (dirPath, rules = []) => {
   return Promise.all(promises);
 };
 
-const getErrors = async (dirPath = '/content', rules = []) => {
+const getErrors = async (dirPath, language, rules = []) => {
   const filePaths = await getFilePaths(dirPath);
 
   const promises = filePaths.map(async (fullpath) => {
@@ -146,7 +146,7 @@ const getErrors = async (dirPath = '/content', rules = []) => {
 
     const content = parser.filterContent(sourceContent);
 
-    const checkResult = await check(content, rules);
+    const checkResult = await check(content, language, rules);
 
     const resultCheckFile = checkResult.matches.map((match) => {
       const { offset, length, replacements } = match;
@@ -186,15 +186,25 @@ const formatContextMessage = (context, offset, length) => {
   return result;
 }
 
-const formatError = (error) => {
+const getLineError = (error) => {
   const {
     fileName,
     lineNumber,
     match,
+  } = error;
+
+  const lineError = `${fileName}#${lineNumber}#${match.context.offset}#${match.context.length}`;
+
+  return lineError;
+};
+
+const formatError = (error) => {
+  const {
+    match,
     replacements,
   } = error;
 
-  const fileLineMessage = formatMessage(`${fileName}#${lineNumber}`, 'blue');
+  const fileLineMessage = formatMessage(getLineError(error), 'blue');
   const contextMessage = formatContextMessage(match.context.text, match.context.offset, match.context.length);
 
   const errorMessage = formatMessage(match.message, 'red');
@@ -215,9 +225,33 @@ const formatError = (error) => {
 
 const formatErrors = (errors) => errors.map(formatError);
 
+const filterIgnoredErrors = (errors, ignoreFilePath) => {
+  if (!fs.existsSync(ignoreFilePath)) {
+    return errors;
+  }
+
+  const ignoreContent = fs.readFileSync(ignoreFilePath, 'utf-8');
+  const ignore = ignoreContent.split(', ');
+
+  const result = errors.filter((error) => {
+    const lineError = getLineError(error)
+    return !ignore.includes(lineError);
+  });
+
+  return result;
+};
+
+const writeIgnoreErrorsFile = (errors, ignoreFilePath) => {
+  const result = errors.map(getLineError).join(', ');
+
+  fs.writeFileSync(ignoreFilePath, result, 'utf-8');
+};
+
 export {
   fix,
   getWrongWords,
   getErrors,
   formatErrors,
+  filterIgnoredErrors,
+  writeIgnoreErrorsFile,
 };

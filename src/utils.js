@@ -1,11 +1,8 @@
 // @ts-check
 
 import clc from 'cli-color';
-import fs from 'fs/promises';
-import path from 'path';
 import _ from 'lodash';
-
-const defaultExtensions = ['.md'];
+import { glob } from 'glob';
 
 export const formatMessage = (msg, color = 'dark') => {
   if (!clc[color]) {
@@ -16,15 +13,9 @@ export const formatMessage = (msg, color = 'dark') => {
 
 export const formatError = (err) => clc.red(err);
 
-export const getFilePaths = async (dirpath, extensions = defaultExtensions) => {
-  const fileNames = await fs.readdir(dirpath, { recursive: true });
-  
-  const filePaths = fileNames.filter((filename) => extensions.includes(path.extname(filename).toLowerCase()));
-
-  return filePaths.map((filePath) => {
-    const fullpath = path.join(dirpath, filePath);
-    return fullpath;
-  });
+export const getFilePaths = async (dirPath) => {
+  const filePaths = await glob(dirPath);
+  return filePaths;
 };
 
 export const parseCheckedResult = (match, currentResult, currentDiffLength) => {
