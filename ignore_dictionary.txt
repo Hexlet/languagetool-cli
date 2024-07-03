@@ -112,3 +112,5 @@ javascript
 hexlet
 linter
 тернарника
+авторизируют
+гитхабе

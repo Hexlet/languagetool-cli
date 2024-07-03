@@ -80,13 +80,17 @@ program
   .option('-r, --rules "rule1, rule2, ..."', 'languagetools rules', '')
   .option('-l, --language <Ru-ru>', 'A language code like en-US, de-DE, fr, or auto to guess the language automatically', 'auto')
   .option('-f, --file <wrong_words.txt>', 'Destination', '/content/wrong_words.txt')
+  .option('-i, --ignore <file_path>', 'Path to file with ignore contexts', '/content/ignore')
   .action((dirPath = '/content', filePath, options) => {
     exec(serverStartCommand, () => setTimeout(async () => {
       const rules = options.rules.split(',').map((item) => item.trim()).filter((item) => item);
       const language = options.language;
+      const ignorePath = options.ignore;
 
       const errors = await getErrors(dirPath, language, rules);
-      writeIgnoreErrorsFile(errors, filePath);
+      const filtered = filterIgnoredErrors(errors, ignorePath);
+
+      writeIgnoreErrorsFile(filtered, filePath);
     }, 5000));    
   });
 

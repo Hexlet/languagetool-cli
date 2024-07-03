@@ -209,7 +209,7 @@ const formatError = (error, isColored) => {
   } = error;
 
   const fileLineMessage = formatMessage(getLineError(error), isColored && 'blue');
-  const contextMessage = formatContextMessage(match.context.text, match.context.offset, match.context.length);
+  const contextMessage = formatContextMessage(match.context.text, match.context.offset, match.context.length, isColored);
 
   const errorMessage = formatMessage(match.message, isColored && 'red');
 
@@ -249,7 +249,7 @@ const writeIgnoreErrorsFile = (errors, ignoreFilePath) => {
   const formatedErrors = formatErrors(errors);
   const result = formatedErrors.join(errorDelimeter);
 
-  fs.writeFileSync(ignoreFilePath, result, 'utf-8');
+  fs.appendFile(`${ignoreFilePath}${errorDelimeter}`, result, 'utf-8');
 };
 
 export {
