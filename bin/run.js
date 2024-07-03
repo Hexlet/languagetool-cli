@@ -2,15 +2,7 @@
 
 import { exec } from 'child_process';
 import fs from 'node:fs';
-import {
-  getErrors,
-  formatErrors,
-  getWrongWords,
-  fix,
-  filterIgnoredErrors,
-  writeIgnoreErrorsFile,
-  errorDelimeter,
-} from '../src/index.js';
+import { getErrors, formatErrors, getWrongWords, fix, filterIgnoredErrors, writeIgnoreErrorsFile } from '../src/index.js';
 import { getLanguageToolVersion } from '../src/utils.js';
 import { Command } from 'commander';
 const program = new Command();
@@ -31,10 +23,10 @@ program
       const ignorePath = options.ignore;
 
       const errors = await getErrors(dirPath, language, rules);
-      const formatedErrors = formatErrors(errors);
-      const filtered = filterIgnoredErrors(formatedErrors, ignorePath);
+      const filtered = filterIgnoredErrors(errors, ignorePath);
       if (filtered.length > 0) {
-        console.log(filtered.join(errorDelimeter));
+        const formattedErrors = formatErrors(filtered);
+        console.log(formattedErrors.join('\n------------------------\n'));
         process.exit(1);
       }
     }, 5000));    
@@ -85,8 +77,7 @@ program
       const language = options.language;
 
       const errors = await getErrors(dirPath, language, rules);
-      const formatedErrors = formatErrors(errors);
-      writeIgnoreErrorsFile(formatedErrors, filePath);
+      writeIgnoreErrorsFile(errors, filePath);
     }, 5000));    
   });
 
