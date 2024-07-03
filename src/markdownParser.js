@@ -6,10 +6,6 @@ import fs from 'fs';
 
 class Parser {
   // https://github.com/syntax-tree/mdast#nodes
-  filterBlocks = [
-    'code',
-    'inlineCode',
-  ];
   filteredData = [];
 
   constructor(rules) {
@@ -32,10 +28,10 @@ class Parser {
   }
 
 
-  filterContent(content) {
+  filterContent(content, filterBlocks) {
     const mkTree = fromMarkdown(content);
     const iter = (tree) => {
-      if (this.filterBlocks.includes(tree.type)) {
+      if (filterBlocks.includes(tree.type)) {
         const currentNode = _.cloneDeep(tree);
         this.filteredData.push(currentNode);
         if (tree.children) {

@@ -114,6 +114,8 @@ const checkTree = (source, language, rules) => {
   return iter(source);
 }
 
+/* TODO: Функция парсит маркдаун-файл и проверяет текст в узлах, пропуская ненужные узлы из списка filterBlocks.
+Возможно стоит использовать Checker вместо этого (как в getErrors) */
 const fix = async (dirPath, language, rules = []) => {
   const filePaths = await getFilePaths(dirPath);
   const promises = filePaths.map(async (fullpath) => {
@@ -146,7 +148,7 @@ const getErrors = async (dirPath, language, rules = []) => {
 
     const parser = new Checker(rules);
 
-    const content = parser.filterContent(sourceContent);
+    const content = parser.filterContent(sourceContent, filterBlocks);
 
     const checkResult = await check(content, language, rules);
 
