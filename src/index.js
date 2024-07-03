@@ -197,7 +197,7 @@ const getLineError = (error) => {
     match,
   } = error;
 
-  const lineError = `${fileName}#${lineNumber}#${match.context.offset}#${match.context.length}`;
+  const lineError = [fileName, lineNumber, match.context.offset, match.context.length].join(':');
 
   return lineError;
 };
