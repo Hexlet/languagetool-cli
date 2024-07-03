@@ -37,12 +37,11 @@ class Parser {
     const iter = (tree) => {
       if (this.filterBlocks.includes(tree.type)) {
         const currentNode = _.cloneDeep(tree);
-        currentNode.id = uuidv4();
         this.filteredData.push(currentNode);
         if (tree.children) {
           tree.children = [];
         }
-        tree.value = currentNode.id;
+        tree.value = '';
         return;
       }
       if (tree.children) {
@@ -61,11 +60,11 @@ class Parser {
     const mkTree = fromMarkdown(content);
     const iter = (tree) => {
       if (this.filterBlocks.includes(tree.type)) {
-        const currentNode = this.filteredData.find((node) => node.id === tree.value);
+        const currentNode = this.filteredData.shift();
         if (currentNode.children) {
           tree.children = currentNode.children;
         }
-        tree.value = currentNode.id;
+        tree.value = currentNode.value;
         return;
       }
       if (tree.children) {

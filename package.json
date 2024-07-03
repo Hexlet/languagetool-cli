@@ -19,7 +19,6 @@
     "glob": "^10.4.2",
     "lodash": "^4.17.21",
     "mdast-util-from-markdown": "^2.0.0",
-    "mdast-util-to-markdown": "^2.1.0",
-    "uuid": "^9.0.1"
+    "mdast-util-to-markdown": "^2.1.0"
   }
 }
