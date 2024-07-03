@@ -110,3 +110,5 @@
 деструктуризации
 javascript
 hexlet
+linter
+тернарника

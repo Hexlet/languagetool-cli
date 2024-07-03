@@ -31,10 +31,11 @@ program
       const ignorePath = options.ignore;
 
       const errors = await getErrors(dirPath, language, rules);
-      const formatedErrors = formatErrors(errors);
-      const filtered = filterIgnoredErrors(formatedErrors, ignorePath);
+      const filtered = filterIgnoredErrors(errors, ignorePath);
       if (filtered.length > 0) {
-        console.log(filtered.join(errorDelimeter));
+        const formatedErrors = formatErrors(filtered, true);
+      
+        console.log(formatedErrors.join(errorDelimeter));
         process.exit(1);
       }
     }, 5000));    
@@ -85,8 +86,7 @@ program
       const language = options.language;
 
       const errors = await getErrors(dirPath, language, rules);
-      const formatedErrors = formatErrors(errors);
-      writeIgnoreErrorsFile(formatedErrors, filePath);
+      writeIgnoreErrorsFile(errors, filePath);
     }, 5000));    
   });
 

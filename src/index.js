@@ -178,12 +178,12 @@ const getErrors = async (dirPath, language, rules = []) => {
   return Promise.all(promises).then((results) => results.flat().filter((item) => item));
 };
 
-const formatContextMessage = (context, offset, length) => {
+const formatContextMessage = (context, offset, length, isColored) => {
   const leftPart = context.slice(0, offset);
   const errorPart = context.slice(offset, offset + length);
   const rightPart =  context.slice(offset + length);
   
-  const formattedErrorPath = formatMessage(errorPart, 'red');
+  const formattedErrorPath = formatMessage(errorPart, isColored && 'red');
 
   const result = `${leftPart}${formattedErrorPath}${rightPart}`;
   
@@ -202,20 +202,20 @@ const getLineError = (error) => {
   return lineError;
 };
 
-const formatError = (error) => {
+const formatError = (error, isColored) => {
   const {
     match,
     replacements,
   } = error;
 
-  const fileLineMessage = formatMessage(getLineError(error), 'blue');
+  const fileLineMessage = formatMessage(getLineError(error), isColored && 'blue');
   const contextMessage = formatContextMessage(match.context.text, match.context.offset, match.context.length);
 
-  const errorMessage = formatMessage(match.message, 'red');
+  const errorMessage = formatMessage(match.message, isColored && 'red');
 
-  const formattedReplacements = replacements.map((replacement) => formatMessage(replacement.value, 'green')).join(', ');
+  const formattedReplacements = replacements.map((replacement) => formatMessage(replacement.value, isColored && 'green')).join(', ');
 
-  const replacementsMessage = `${formatMessage('Предлагаемые варианты:\n', 'blue')}${formattedReplacements}`;
+  const replacementsMessage = `${formatMessage('Предлагаемые варианты:\n', isColored && 'blue')}${formattedReplacements}`;
 
   const result = [
     fileLineMessage,
@@ -227,22 +227,26 @@ const formatError = (error) => {
   return result;
 };
 
-const formatErrors = (errors) => errors.map(formatError);
+const formatErrors = (errors, isColored = false) => errors.map((error) => formatError(error, isColored));
 
-const filterIgnoredErrors = (formatedErrors, ignoreFilePath) => {
+const filterIgnoredErrors = (errors, ignoreFilePath) => {
   if (!fs.existsSync(ignoreFilePath)) {
-    return formatedErrors;
+    return errors;
   }
 
   const ignoreContent = fs.readFileSync(ignoreFilePath, 'utf-8');
   const ignore = ignoreContent.split(errorDelimeter);
 
-  const result = formatedErrors.filter((error) => !ignore.includes(error));
+  const result = errors.filter((error) => {
+    const formatedError = formatError(error);
+    return !ignore.includes(formatedError);
+  });
 
   return result;
 };
 
-const writeIgnoreErrorsFile = (formatedErrors, ignoreFilePath) => {
+const writeIgnoreErrorsFile = (errors, ignoreFilePath) => {
+  const formatedErrors = formatErrors(errors);
   const result = formatedErrors.join(errorDelimeter);
 
   fs.writeFileSync(ignoreFilePath, result, 'utf-8');

@@ -4,7 +4,10 @@ import clc from 'cli-color';
 import _ from 'lodash';
 import { glob } from 'glob';
 
-export const formatMessage = (msg, color = 'dark') => {
+export const formatMessage = (msg, color) => {
+  if (!color) {
+    return msg;
+  }
   if (!clc[color]) {
     return clc.white(msg);
   }
