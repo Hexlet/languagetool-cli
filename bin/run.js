@@ -78,7 +78,7 @@ program
       const language = options.language;
 
       const errors = await getErrors(dirPath, language, rules);
-      fs.writeFileSync(filePath, words.join('\n'), 'utf-8');
+      writeIgnoreErrorsFile(errors, filePath);
     }, 5000));    
   });
 
