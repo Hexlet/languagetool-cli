@@ -1,6 +1,5 @@
 import { fromMarkdown } from 'mdast-util-from-markdown';
 import { toMarkdown } from 'mdast-util-to-markdown'
-import { v4 as uuidv4 } from 'uuid';
 import _ from 'lodash';
 import fs from 'fs';
 
