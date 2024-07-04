@@ -249,7 +249,7 @@ const writeIgnoreErrorsFile = (errors, ignoreFilePath) => {
   const formatedErrors = formatErrors(errors);
   const result = formatedErrors.join(errorDelimeter);
 
-  fs.appendFile(`${ignoreFilePath}${errorDelimeter}`, result, 'utf-8');
+  fs.appendFileSync(`${ignoreFilePath}${errorDelimeter}`, result, 'utf-8');
 };
 
 export {
