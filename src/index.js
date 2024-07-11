@@ -1,6 +1,6 @@
-import axios from 'axios';
-import fs from 'fs';
-import path from 'path';
+
+import fs from 'node:fs';
+import path from 'node:path';
 import _ from 'lodash';
 import { fromMarkdown } from 'mdast-util-from-markdown';
 import { toMarkdown } from 'mdast-util-to-markdown'
@@ -10,6 +10,7 @@ import {
   formatMessage,
   parseCheckedResult,
   printFixResult,
+  getIgnoredWordsInWorkspace,
 } from './utils.js';
 
 import { check } from './languageToolApi.js';
@@ -22,11 +23,13 @@ const filterBlocks = [
 
 const errorDelimeter = '\n------------------------\n';
 
+/* TODO перенести получение слов для фильтра */
 const filterWordsContent = fs.readFileSync('ignore_dictionary.txt', 'utf-8');
 const filterWords = filterWordsContent.split(/\n/).map((word) => word.toLowerCase());
 
-const isFiltered = (word) => {
-  if (filterWords.includes(word.toLowerCase())) {
+
+const isFiltered = (word, additionalWords = []) => {
+  if ([...filterWords, ...additionalWords].includes(word.toLowerCase())) {
     return true;
   }
 
@@ -141,6 +144,8 @@ const fix = async (dirPath, language, rules = []) => {
 const getErrors = async (dirPath, language, rules = []) => {
   const filePaths = await getFilePaths(dirPath);
 
+  const wrongWords = getIgnoredWordsInWorkspace('/content/.vscode/settings.json');
+
   const promises = filePaths.map(async (fullpath) => {
     const sourceContent = fs.readFileSync(fullpath, 'utf-8');
 
@@ -158,7 +163,7 @@ const getErrors = async (dirPath, language, rules = []) => {
       const lineNumber = leftPart.split('\n').length;
       const word = content.slice(offset, offset + length);
 
-      if (isFiltered(word)) {
+      if (isFiltered(word, wrongWords)) {
         return null;
       }
 

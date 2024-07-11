@@ -1,5 +1,6 @@
 // @ts-check
 
+import fs from 'node:fs';
 import clc from 'cli-color';
 import _ from 'lodash';
 import { glob } from 'glob';
@@ -57,6 +58,17 @@ export const printFixResult = (previousContent, currentContent, fileName) => {
   console.log('Стало:');
   console.log(formatMessage(currentContent, 'green'));
   console.log(`-------------------${fileName} done -----------------`);
+};
+
+export const getIgnoredWordsInWorkspace = (path) => {
+  if (!fs.existsSync(path)) {
+    return [];
+  }
+
+  const content = fs.readFileSync(path, 'utf-8');
+  const parsed = JSON.parse(content);
+
+  return parsed['languageToolLinter.languageTool.ignoredWordsInWorkspace'] || [];
 };
 
 export const getLanguageToolVersion = '6.4';
