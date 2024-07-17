@@ -1,0 +1,11 @@
+{
+  "languageToolLinter.languageTool.ignoredWordsInWorkspace": [
+    "languagetool-cli",
+    "игнорила",
+    "игнорить",
+    "игнорятся",
+    "пуллреквест",
+    "регулярку",
+    "игнорит"
+  ]
+}

@@ -30,7 +30,7 @@ Options:
                                    auto to guess the language automatically
                                    (default: "auto")
   -i, --ignore <file_path>         Path to file with ignore contexts (default:
-                                   "/content/ignore")
+                                   "/content/ignored_languagetool_errors")
   -h, --help                       display help for command
 ```
 
