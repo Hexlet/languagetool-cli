@@ -3,19 +3,19 @@
 ## Checking errors
 
 ```bash
-docker run --rm -v ./<directory>:/content hexlet/languagetool-cli node ./bin/run.js check <filePath>
+docker run --rm -v ./<directory>:/content ghcr.io/hexlet/languagetool-cli node ./bin/run.js check <filePath>
 ```
 
 Example:
 
 ```bash
-docker run --rm -v ./fixtures:/content hexlet/languagetool-cli node ./bin/run.js check /content/**/*.md
+docker run --rm -v ./fixtures:/content ghcr.io/hexlet/languagetool-cli node ./bin/run.js check /content/**/*.md
 ```
 
 Help:
 
 ```bash
-docker run --rm -v ./fixtures:/content hexlet/languagetool-cli node ./bin/run.js check -h
+docker run --rm -v ./fixtures:/content ghcr.io/hexlet/languagetool-cli node ./bin/run.js check -h
 
 Usage: run check [options] [dir_path]
 
@@ -37,19 +37,19 @@ Options:
 ## Fixing errors:
 
 ```bash
-docker run --rm -v ./<directory>:/content hexlet/languagetool-cli node ./bin/run.js fix <filePath>
+docker run --rm -v ./<directory>:/content ghcr.io/hexlet/languagetool-cli node ./bin/run.js fix <filePath>
 ```
 
 Example:
 
 ```bash
-docker run --rm -v ./fixtures:/content hexlet/languagetool-cli node ./bin/run.js fix /content/**/*.md
+docker run --rm -v ./fixtures:/content ghcr.io/hexlet/languagetool-cli node ./bin/run.js fix /content/**/*.md
 ```
 
 Help:
 
 ```bash
-docker run --rm -v ./fixtures:/content hexlet/languagetool-cli node ./bin/run.js fix -h
+docker run --rm -v ./fixtures:/content ghcr.io/hexlet/languagetool-cli node ./bin/run.js fix -h
 
 Usage: run fix [options] <dirPath>
 
@@ -64,17 +64,17 @@ Options:
 ## To get wrong words:
 
 ```bash
-docker run --rm -v ./<directory>:/content hexlet/languagetool-cli node ./bin/run.js words <filePath>
+docker run --rm -v ./<directory>:/content ghcr.io/hexlet/languagetool-cli node ./bin/run.js words <filePath>
 ```
 
 Example:
 
 ```bash
-docker run --rm -v ./fixtures:/content hexlet/languagetool-cli node ./bin/run.js words /content/**/*.md
+docker run --rm -v ./fixtures:/content ghcr.io/hexlet/languagetool-cli node ./bin/run.js words /content/**/*.md
 ```
 
 ```bash
-docker run --rm -v ./<directory>:/content hexlet/languagetool-cli node ./bin/run.js words -h
+docker run --rm -v ./<directory>:/content ghcr.io/hexlet/languagetool-cli node ./bin/run.js words -h
 
 Options:
   -r, --rules "rule1, rule2, ..."  languagetools rules
