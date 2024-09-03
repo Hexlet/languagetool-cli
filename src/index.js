@@ -38,43 +38,28 @@ const lemmatizeWord = async (word) => {
   }
 };
 
-// Lemmatize all words in the dictionary
-const lemmatizeDictionary = async (dictionary) => {
-  const lemmatizedDictionary = new Set();
-  for (const word of dictionary) {
-    const lemma = await lemmatizeWord(word);
-    lemmatizedDictionary.add(lemma);
-  }
-  return lemmatizedDictionary;
-};
-
 // Read and lemmatize the filter words
-const filterWordsContent = fs.readFileSync('ignore_dictionary.txt', 'utf-8');
-const filterWords = filterWordsContent.split(/\n/).map((word) => word.toLowerCase());
-let lemmatizedFilterWords;
+const getFilteredSet = async () => {
+  const filterWordsContent = fs.readFileSync('ignore_dictionary.txt', 'utf-8');
+  console.log('FILTERED_WORDS = ', filterWordsContent)
+  const filterWords = filterWordsContent.split(/\n/).map((word) => word.toLowerCase());
 
-// Function to initialize lemmatized filter words
-const initLemmatizedFilterWords = async () => {
-  lemmatizedFilterWords = await lemmatizeDictionary(filterWords);
-};
+  const filteredSet = new Set();
 
-const isFiltered = async (word, additionalWords = []) => {
-  const lemma = await lemmatizeWord(word);
+  for (const word of filterWords) {
+    // Add the original word (lowercase)
+    filteredSet.add(word);
 
-  const lemmatizedAdditionalWords = await lemmatizeDictionary(additionalWords);
-
-  if (lemmatizedFilterWords.has(lemma) || lemmatizedAdditionalWords.has(lemma)) {
-    return true;
+    // Add the lemma
+    const lemma = await lemmatizeWord(word);
+    filteredSet.add(lemma);
   }
 
-  if (word.includes('   ')) {
-    return true;
-  }
-
-  return false;
+  return filteredSet;
 };
 
 const getWrongWords = async (dirPath, language, rules = []) => {
+  const filteredSet = await getFilteredSet();
   const filePaths = await getFilePaths(dirPath);
 
   const promises = filePaths.map(async (fullpath) => {
@@ -86,7 +71,9 @@ const getWrongWords = async (dirPath, language, rules = []) => {
       const { offset, length } = match;
       const word = content.slice(offset, offset + length);
 
-      if (await isFiltered(word)) {
+      const lemma = await lemmatizeWord(word);
+
+      if (filteredSet.has(word.toLowerCase()) || filteredSet.has(lemma)) {
         return '';
       }
 
@@ -102,6 +89,7 @@ const getWrongWords = async (dirPath, language, rules = []) => {
 };
 
 const checkContent = async (content, language, rules) => {
+  const filteredSet = await getFilteredSet();
   const checkResults = await check(content, language, rules);
 
   const results = checkResults.matches;
@@ -115,7 +103,11 @@ const checkContent = async (content, language, rules) => {
 
     const parsed = parseCheckedResult(match, acc.result, acc.currentDiffLength);
 
-    if (!parsed || (parsed.incorrectWord && await isFiltered(parsed.incorrectWord))) {
+    if (!parsed) return acc;
+
+    const lemma = await lemmatizeWord(parsed.incorrectWord);
+
+    if (filteredSet.has(parsed.incorrectWord.toLowerCase()) || filteredSet.has(lemma)) {
       return acc;
     }
 
@@ -174,9 +166,12 @@ const fix = async (dirPath, language, rules = []) => {
 };
 
 const getErrors = async (dirPath, language, rules = []) => {
+  const filteredSet = await getFilteredSet();
+  console.log('LEMMAS = ', filteredSet);
   const filePaths = await getFilePaths(dirPath);
 
   const wrongWords = getIgnoredWordsInWorkspace('/content/.vscode/settings.json');
+  wrongWords.forEach(word => filteredSet.add(word.toLowerCase()));
 
   const promises = filePaths.map(async (fullpath) => {
     const sourceContent = fs.readFileSync(fullpath, 'utf-8');
@@ -195,7 +190,9 @@ const getErrors = async (dirPath, language, rules = []) => {
       const lineNumber = leftPart.split('\n').length;
       const word = content.slice(offset, offset + length);
 
-      if (await isFiltered(word, wrongWords)) {
+      const lemma = await lemmatizeWord(word);
+
+      if (filteredSet.has(word.toLowerCase()) || filteredSet.has(lemma)) {
         return null;
       }
 
@@ -289,24 +286,17 @@ const writeIgnoreErrorsFile = (errors, ignoreFilePath) => {
   fs.appendFileSync(ignoreFilePath, `${result}${errorDelimeter}`, 'utf-8');
 };
 
-// Initialize lemmatized filter words before running any checks
-const init = async () => {
-  await initLemmatizedFilterWords();
-  console.log('Lemmatized filter words initialized.');
-};
-
-// Main function to run the spell-check
-const main = async () => {
-  await init();
-
-  // Your main logic here, e.g.:
-  const errors = await getErrors('/content/content.md', 'ru', []);
-  console.log(formatErrors(errors, true));
-};
-
-main().catch(console.error).finally(() => {
+// Cleanup function
+const cleanup = () => {
   mystem.stop();
   console.log('Mystem stopped.');
+};
+
+// Make sure to call cleanup when the process is about to exit
+process.on('exit', cleanup);
+process.on('SIGINT', () => {
+  cleanup();
+  process.exit();
 });
 
 export {
