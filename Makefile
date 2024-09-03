@@ -14,7 +14,7 @@ check:
 		-v ./bin:/LanguageTool-6.4/bin \
 		-v ./src:/LanguageTool-6.4/src \
 		hexlet/languagetool-cli \
-		node ./bin/run.js check /content/**/*.md
+		node ./bin/run.js check /content/content.md
 
 fix:
 	docker run --rm \

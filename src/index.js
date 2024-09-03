@@ -1,9 +1,9 @@
-
 import fs from 'node:fs';
 import path from 'node:path';
 import _ from 'lodash';
 import { fromMarkdown } from 'mdast-util-from-markdown';
 import { toMarkdown } from 'mdast-util-to-markdown'
+import MyStem from 'mystem3';
 
 import {
   getFilePaths,
@@ -23,13 +23,47 @@ const filterBlocks = [
 
 const errorDelimeter = '\n------------------------\n';
 
-/* TODO перенести получение слов для фильтра */
+// Initialize mystem
+const mystem = new MyStem();
+mystem.start();
+
+// Function to lemmatize a word using mystem3
+const lemmatizeWord = async (word) => {
+  try {
+    const lemma = await mystem.lemmatize(word);
+    return lemma.toLowerCase();
+  } catch (error) {
+    console.error(`Error lemmatizing word "${word}":`, error);
+    return word.toLowerCase(); // Return the original word if lemmatization fails
+  }
+};
+
+// Lemmatize all words in the dictionary
+const lemmatizeDictionary = async (dictionary) => {
+  const lemmatizedDictionary = new Set();
+  for (const word of dictionary) {
+    const lemma = await lemmatizeWord(word);
+    lemmatizedDictionary.add(lemma);
+  }
+  return lemmatizedDictionary;
+};
+
+// Read and lemmatize the filter words
 const filterWordsContent = fs.readFileSync('ignore_dictionary.txt', 'utf-8');
 const filterWords = filterWordsContent.split(/\n/).map((word) => word.toLowerCase());
+let lemmatizedFilterWords;
 
+// Function to initialize lemmatized filter words
+const initLemmatizedFilterWords = async () => {
+  lemmatizedFilterWords = await lemmatizeDictionary(filterWords);
+};
 
-const isFiltered = (word, additionalWords = []) => {
-  if ([...filterWords, ...additionalWords].includes(word.toLowerCase())) {
+const isFiltered = async (word, additionalWords = []) => {
+  const lemma = await lemmatizeWord(word);
+
+  const lemmatizedAdditionalWords = await lemmatizeDictionary(additionalWords);
+
+  if (lemmatizedFilterWords.has(lemma) || lemmatizedAdditionalWords.has(lemma)) {
     return true;
   }
 
@@ -41,7 +75,6 @@ const isFiltered = (word, additionalWords = []) => {
 };
 
 const getWrongWords = async (dirPath, language, rules = []) => {
-
   const filePaths = await getFilePaths(dirPath);
 
   const promises = filePaths.map(async (fullpath) => {
@@ -49,16 +82,16 @@ const getWrongWords = async (dirPath, language, rules = []) => {
 
     const data = await check(content, language, rules);
 
-    const result= data.matches.map((match) => {
+    const result = await Promise.all(data.matches.map(async (match) => {
       const { offset, length } = match;
       const word = content.slice(offset, offset + length);
 
-      if (isFiltered(word)) {
+      if (await isFiltered(word)) {
         return '';
       }
 
       return word.trim();
-    });
+    }));
 
     return result.filter((item) => item).join('\n');
   });
@@ -72,16 +105,17 @@ const checkContent = async (content, language, rules) => {
   const checkResults = await check(content, language, rules);
 
   const results = checkResults.matches;
-  
+
   if (!results) {
     return '';
   }
 
-  const totalResult = results.reduce((acc, match) => {
+  const totalResult = await results.reduce(async (accPromise, match) => {
+    const acc = await accPromise;
 
     const parsed = parseCheckedResult(match, acc.result, acc.currentDiffLength);
 
-    if (!parsed || (parsed.incorrectWord && isFiltered(parsed.incorrectWord))) {
+    if (!parsed || (parsed.incorrectWord && await isFiltered(parsed.incorrectWord))) {
       return acc;
     }
 
@@ -89,7 +123,7 @@ const checkContent = async (content, language, rules) => {
       result: parsed.result,
       currentDiffLength: parsed.currentDiffLength,
     };
-  }, { result: content, currentDiffLength: 0 });
+  }, Promise.resolve({ result: content, currentDiffLength: 0 }));
 
   return totalResult.result;
 };
@@ -117,8 +151,6 @@ const checkTree = (source, language, rules) => {
   return iter(source);
 }
 
-/* TODO: Функция парсит маркдаун-файл и проверяет текст в узлах, пропуская ненужные узлы из списка filterBlocks.
-Возможно стоит использовать Checker вместо этого (как в getErrors) */
 const fix = async (dirPath, language, rules = []) => {
   const filePaths = await getFilePaths(dirPath);
   const promises = filePaths.map(async (fullpath) => {
@@ -157,13 +189,13 @@ const getErrors = async (dirPath, language, rules = []) => {
 
     const checkResult = await check(content, language, rules);
 
-    const resultCheckFile = checkResult.matches.map((match) => {
+    const resultCheckFile = await Promise.all(checkResult.matches.map(async (match) => {
       const { offset, length, replacements } = match;
       const leftPart =  content.slice(0, offset);
       const lineNumber = leftPart.split('\n').length;
       const word = content.slice(offset, offset + length);
 
-      if (isFiltered(word, wrongWords)) {
+      if (await isFiltered(word, wrongWords)) {
         return null;
       }
 
@@ -175,23 +207,23 @@ const getErrors = async (dirPath, language, rules = []) => {
       };
 
       return result;
-    });
+    }));
 
-    return resultCheckFile;
+    return resultCheckFile.filter(item => item !== null);
   });
 
-  return Promise.all(promises).then((results) => results.flat().filter((item) => item));
+  return Promise.all(promises).then((results) => results.flat());
 };
 
 const formatContextMessage = (context, offset, length, isColored) => {
   const leftPart = context.slice(0, offset);
   const errorPart = context.slice(offset, offset + length);
   const rightPart =  context.slice(offset + length);
-  
+
   const formattedErrorPath = formatMessage(errorPart, isColored && 'red');
 
   const result = `${leftPart}${formattedErrorPath}${rightPart}`;
-  
+
   return result;
 }
 
@@ -256,6 +288,26 @@ const writeIgnoreErrorsFile = (errors, ignoreFilePath) => {
 
   fs.appendFileSync(ignoreFilePath, `${result}${errorDelimeter}`, 'utf-8');
 };
+
+// Initialize lemmatized filter words before running any checks
+const init = async () => {
+  await initLemmatizedFilterWords();
+  console.log('Lemmatized filter words initialized.');
+};
+
+// Main function to run the spell-check
+const main = async () => {
+  await init();
+
+  // Your main logic here, e.g.:
+  const errors = await getErrors('/content/content.md', 'ru', []);
+  console.log(formatErrors(errors, true));
+};
+
+main().catch(console.error).finally(() => {
+  mystem.stop();
+  console.log('Mystem stopped.');
+});
 
 export {
   fix,
