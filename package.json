@@ -17,7 +17,7 @@
     "cli-color": "^2.0.4",
     "commander": "^12.1.0",
     "glob": "^11.1.0",
-    "lodash": "^4.17.21",
+    "lodash": "^4.17.23",
     "mdast-util-from-markdown": "^2.0.0",
     "mdast-util-to-markdown": "^2.1.0"
   }
